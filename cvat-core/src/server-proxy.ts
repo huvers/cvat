@@ -1505,6 +1505,8 @@ async function deleteJob(jobID: number): Promise<void> {
 }
 
 async function getJobNarrations(jobID: number): Promise<SerializedJobNarration[]> {
+    const { backendAPI } = config;
+
     try {
         const response = await Axios.get(`${backendAPI}/jobs/${jobID}/narrations`, {
             params: {
@@ -1537,6 +1539,8 @@ async function createJobNarration(
         metadata?: Record<string, any>;
     },
 ): Promise<SerializedJobNarration> {
+    const { backendAPI } = config;
+
     try {
         const formData = new FormData();
         formData.append('file', file, filename);
