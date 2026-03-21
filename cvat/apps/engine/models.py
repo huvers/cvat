@@ -715,6 +715,8 @@ def clear_annotations_in_jobs(job_ids: Iterable[int]):
         LabeledShape.objects.filter(job_id__in=job_ids_chunk).delete()
         LabeledImageAttributeVal.objects.filter(job_id__in=job_ids_chunk).delete()
         LabeledImage.objects.filter(job_id__in=job_ids_chunk).delete()
+        LabeledIntervalAttributeVal.objects.filter(job_id__in=job_ids_chunk).delete()
+        LabeledInterval.objects.filter(job_id__in=job_ids_chunk).delete()
 
 
 @transaction.atomic(savepoint=False)
@@ -1164,10 +1166,12 @@ class Job(TimestampedModel, AssignableModel, FileSystemRelatedModel):
     )
 
     labeledimage_set: models.manager.RelatedManager[LabeledImage]
+    labeledinterval_set: models.manager.RelatedManager[LabeledInterval]
     labeledshape_set: models.manager.RelatedManager[LabeledShape]
     labeledtrack_set: models.manager.RelatedManager[LabeledTrack]
     trackedshape_set: models.manager.RelatedManager[TrackedShape]
     labeledimageattributeval_set: models.manager.RelatedManager[LabeledImageAttributeVal]
+    labeledintervalattributeval_set: models.manager.RelatedManager[LabeledIntervalAttributeVal]
     labeledshapeattributeval_set: models.manager.RelatedManager[LabeledShapeAttributeVal]
     labeledtrackattributeval_set: models.manager.RelatedManager[LabeledTrackAttributeVal]
     trackedshapeattributeval_set: models.manager.RelatedManager[TrackedShapeAttributeVal]
@@ -1423,6 +1427,22 @@ class LabeledImage(Annotation):
 
 class LabeledImageAttributeVal(AttributeVal):
     image = models.ForeignKey(LabeledImage, on_delete=models.DO_NOTHING,
+        related_name='attributes', related_query_name='attribute')
+
+class LabeledInterval(Annotation):
+    end_frame = models.PositiveIntegerField()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                name="labeledinterval_frame_lte_end_frame",
+                check=models.Q(end_frame__gte=models.F("frame")),
+            ),
+        ]
+
+
+class LabeledIntervalAttributeVal(AttributeVal):
+    interval = models.ForeignKey(LabeledInterval, on_delete=models.DO_NOTHING,
         related_name='attributes', related_query_name='attribute')
 
 class LabeledShape(Annotation, Shape):

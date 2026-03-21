@@ -27,12 +27,17 @@ class AnnotationIR:
         self.dimension = dimension
         if data:
             self.tags = getattr(data, "tags", []) or data["tags"]
+            self.intervals = getattr(data, "intervals", []) or data.get("intervals", [])
             self.shapes: list | Iterable = getattr(data, "shapes", []) or data["shapes"]
             self.tracks = getattr(data, "tracks", []) or data["tracks"]
 
     def add_tag(self, tag):
         assert not self.is_stream, "Not allowed to add annotations when streaming"
         self.tags.append(tag)
+
+    def add_interval(self, interval):
+        assert not self.is_stream, "Not allowed to add annotations when streaming"
+        self.intervals.append(interval)
 
     def add_shape(self, shape):
         assert not self.is_stream, "Not allowed to add annotations when streaming"
@@ -47,6 +52,7 @@ class AnnotationIR:
         return {
             "version": self.version,
             "tags": self.tags,
+            "intervals": self.intervals,
             "shapes": self.shapes,
             "tracks": self.tracks,
         }
@@ -61,6 +67,7 @@ class AnnotationIR:
     def data(self, data):
         self.version = data["version"]
         self.tags = data["tags"]
+        self.intervals = data.get("intervals", [])
         self.shapes = data["shapes"]
         self.tracks = data["tracks"]
 
@@ -171,6 +178,15 @@ class AnnotationIR:
         splitted_data.tags = [
             deepcopy(t) for t in self.tags if self._is_shape_inside(t, start, stop)
         ]
+        splitted_data.intervals = [
+            dict(
+                deepcopy(i),
+                frame=max(int(i["frame"]), start),
+                end_frame=min(int(i["end_frame"]), stop),
+            )
+            for i in self.intervals
+            if not (int(i["end_frame"]) < start or stop < int(i["frame"]))
+        ]
         splitted_data.shapes = [
             deepcopy(s) for s in self.shapes if self._is_shape_inside(s, start, stop)
         ]
@@ -187,6 +203,7 @@ class AnnotationIR:
     def reset(self):
         self.version = 0
         self.tags = []
+        self.intervals = []
         self.shapes = []
         self.tracks = []
 
@@ -203,6 +220,9 @@ class AnnotationManager:
     def merge(self, data: AnnotationIR, start_frame: int, overlap: int):
         tags = TagManager(self.data.tags, dimension=self.dimension)
         tags.merge(data.tags, start_frame, overlap)
+
+        intervals = IntervalManager(self.data.intervals, dimension=self.dimension)
+        intervals.merge(data.intervals, start_frame, overlap)
 
         shapes_manager = ShapeManager(self.data.shapes, dimension=self.dimension)
         if data.is_stream:
@@ -221,6 +241,9 @@ class AnnotationManager:
 
         tags = TagManager(self.data.tags, dimension=self.dimension)
         tags.clear_frames(frames)
+
+        intervals = IntervalManager(self.data.intervals, dimension=self.dimension)
+        intervals.clear_frames(frames)
 
         shapes = ShapeManager(self.data.shapes, dimension=self.dimension)
         shapes.clear_frames(frames)
@@ -481,6 +504,25 @@ class TagManager(ObjectManager):
     def _unite_objects(obj0, obj1):
         # TODO: improve the trivial implementation
         return obj0 if obj0["frame"] < obj1["frame"] else obj1
+
+    def _modify_unmatched_object(self, obj, end_frame):
+        pass
+
+
+class IntervalManager(ObjectManager):
+    @staticmethod
+    def _get_cost_threshold():
+        return 0.25
+
+    @staticmethod
+    def _calc_objects_similarity(obj0, obj1, start_frame, overlap, dimension):
+        # TODO: improve similarity evaluation (e.g. compare attributes, overlap)
+        return 1 if obj0["label_id"] == obj1["label_id"] else 0
+
+    @staticmethod
+    def _unite_objects(obj0, obj1):
+        # Prefer the interval with the bigger end frame.
+        return obj0 if obj0["end_frame"] >= obj1["end_frame"] else obj1
 
     def _modify_unmatched_object(self, obj, end_frame):
         pass
