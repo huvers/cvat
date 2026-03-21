@@ -1,0 +1,17 @@
+.cvat-surgery-sidebar {
+    background: #fff;
+    border-left: 1px solid #f0f0f0;
+
+    .cvat-surgery-sidebar-tabs {
+        height: 100%;
+
+        .ant-tabs-content-holder {
+            padding: 12px;
+        }
+    }
+
+    .cvat-surgery-sidebar-placeholder {
+        margin: 0;
+    }
+}
+

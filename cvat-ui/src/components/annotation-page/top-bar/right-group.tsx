@@ -53,6 +53,14 @@ function RightGroup(props: Props): JSX.Element {
         }
     })();
 
+    const surgeryWorkspaceEnabled = workspace === Workspace.SURGERY || isDev() || (() => {
+        try {
+            return localStorage.getItem('enableSurgeryWorkspace') === 'true';
+        } catch (error: unknown) {
+            return false;
+        }
+    })();
+
     const openGuide = useCallback(() => {
         const PADDING = Math.min(window.screen.availHeight, window.screen.availWidth) * 0.4;
         jobInstance.guide().then((guide) => {
@@ -176,8 +184,15 @@ function RightGroup(props: Props): JSX.Element {
                     value={workspace}
                 >
                     {Object.values(Workspace).map((ws) => {
+                        if (ws === Workspace.SURGERY && !surgeryWorkspaceEnabled) {
+                            return null;
+                        }
+
                         if (jobInstance.dimension === DimensionType.DIMENSION_3D) {
                             if (ws === Workspace.STANDARD) {
+                                return null;
+                            }
+                            if (ws === Workspace.SURGERY) {
                                 return null;
                             }
                             return (
