@@ -124,6 +124,8 @@ from cvat.apps.engine.serializers import (
     IssueReadSerializer,
     IssueWriteSerializer,
     JobDataMetaWriteSerializer,
+    JobNarrationReadSerializer,
+    JobNarrationWriteSerializer,
     JobReadSerializer,
     JobValidationLayoutReadSerializer,
     JobValidationLayoutWriteSerializer,
@@ -1883,6 +1885,31 @@ class JobViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateMo
                 except (AttributeError, IntegrityError) as e:
                     return Response(data=str(e), status=status.HTTP_400_BAD_REQUEST)
                 return Response(data)
+
+
+    @extend_schema(methods=['GET'], summary='List narrations for a job',
+        responses={
+            '200': JobNarrationReadSerializer(many=True),
+        })
+    @extend_schema(methods=['POST'], summary='Upload a narration for a job',
+        request=JobNarrationWriteSerializer,
+        responses={
+            '201': JobNarrationReadSerializer,
+        })
+    @action(detail=True, methods=['GET', 'POST'], url_path=r'narrations/?$',
+        serializer_class=None, parser_classes=_UPLOAD_PARSER_CLASSES)
+    def narrations(self, request: ExtendedRequest, pk: int):
+        self._object: models.Job = self.get_object() # force call of check_object_permissions()
+
+        if request.method == 'GET':
+            queryset = models.JobNarration.objects.filter(job_id=self._object.id).select_related("owner").order_by("-id")
+            serializer = JobNarrationReadSerializer(queryset, many=True)
+            return Response(serializer.data)
+
+        serializer = JobNarrationWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        narration = serializer.save(job=self._object, owner=request.user)
+        return Response(JobNarrationReadSerializer(narration).data, status=status.HTTP_201_CREATED)
 
 
     @tus_chunk_action(detail=True, suffix_base="annotations")

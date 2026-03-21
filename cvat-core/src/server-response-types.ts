@@ -169,6 +169,20 @@ export interface SerializedJob {
     replicas_count: number;
 }
 
+export interface SerializedJobNarration {
+    id: number;
+    job_id: number;
+    owner: SerializedUser | null;
+    created_date: string;
+    updated_date: string;
+    filename: string;
+    sample_rate: number | null;
+    video_time_offset: number;
+    start_wallclock: string | null;
+    duration: number | null;
+    metadata: Record<string, any>;
+}
+
 export type AttrInputType = 'select' | 'radio' | 'checkbox' | 'number' | 'text';
 export interface SerializedAttribute {
     name: string;
