@@ -17,6 +17,7 @@ import {
     DimensionType, Job, JobStage, JobState,
 } from 'cvat-core-wrapper';
 import { Workspace } from 'reducers';
+import { isDev } from 'utils/environment';
 
 import MDEditor from '@uiw/react-md-editor';
 
@@ -42,6 +43,13 @@ function RightGroup(props: Props): JSX.Element {
     } = props;
 
     const filters = annotationFilters.length;
+    const surgeryWorkspaceEnabled = workspace === Workspace.SURGERY || isDev() || (() => {
+        try {
+            return localStorage.getItem('enableSurgeryWorkspace') === 'true';
+        } catch (error: unknown) {
+            return false;
+        }
+    })();
 
     const openGuide = useCallback(() => {
         const PADDING = Math.min(window.screen.availHeight, window.screen.availWidth) * 0.4;
@@ -157,8 +165,15 @@ function RightGroup(props: Props): JSX.Element {
                     value={workspace}
                 >
                     {Object.values(Workspace).map((ws) => {
+                        if (ws === Workspace.SURGERY && !surgeryWorkspaceEnabled) {
+                            return null;
+                        }
+
                         if (jobInstance.dimension === DimensionType.DIMENSION_3D) {
                             if (ws === Workspace.STANDARD) {
+                                return null;
+                            }
+                            if (ws === Workspace.SURGERY) {
                                 return null;
                             }
                             return (
