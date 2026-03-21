@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { Col } from 'antd/lib/grid';
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
 import Select from 'antd/lib/select';
@@ -13,12 +13,14 @@ import notification from 'antd/lib/notification';
 
 import { FilterIcon, FullscreenIcon, GuideIcon } from 'icons';
 import config from 'config';
+import { isDev } from 'utils/environment';
 import {
     DimensionType, Job, JobStage, JobState,
 } from 'cvat-core-wrapper';
 import { Workspace } from 'reducers';
 
 import MDEditor from '@uiw/react-md-editor';
+import NarrationRecorder from 'components/annotation-page/narration-recorder/narration-recorder';
 
 interface Props {
     showStatistics(): void;
@@ -42,6 +44,14 @@ function RightGroup(props: Props): JSX.Element {
     } = props;
 
     const filters = annotationFilters.length;
+    const [narrationModalVisible, setNarrationModalVisible] = useState(false);
+    const narrationRecorderEnabled = isDev() || (() => {
+        try {
+            return localStorage.getItem('enableNarrationRecorder') === 'true';
+        } catch (error: unknown) {
+            return false;
+        }
+    })();
 
     const openGuide = useCallback(() => {
         const PADDING = Math.min(window.screen.availHeight, window.screen.availWidth) * 0.4;
@@ -139,6 +149,15 @@ function RightGroup(props: Props): JSX.Element {
                 <InfoCircleOutlined />
                 Info
             </Button>
+            {narrationRecorderEnabled && (
+                <Button
+                    type='link'
+                    className='cvat-annotation-header-narration-button cvat-annotation-header-button'
+                    onClick={() => setNarrationModalVisible(true)}
+                >
+                    Narration
+                </Button>
+            )}
             <Button
                 type='link'
                 className={`cvat-annotation-header-filters-button cvat-annotation-header-button ${filters ?
@@ -178,6 +197,16 @@ function RightGroup(props: Props): JSX.Element {
                     })}
                 </Select>
             </div>
+            <Modal
+                title='Narration'
+                open={narrationModalVisible}
+                onCancel={() => setNarrationModalVisible(false)}
+                footer={null}
+                width={520}
+                destroyOnClose
+            >
+                <NarrationRecorder />
+            </Modal>
         </Col>
     );
 }

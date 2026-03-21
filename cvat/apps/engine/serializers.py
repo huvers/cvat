@@ -3523,6 +3523,55 @@ class ProjectFileSerializer(serializers.Serializer):
     project_file = serializers.FileField()
 
 
+class JobNarrationReadSerializer(serializers.ModelSerializer):
+    owner = BasicUserSerializer(allow_null=True, required=False)
+    filename = serializers.SerializerMethodField()
+
+    def get_filename(self, obj: models.JobNarration) -> str:
+        return Path(obj.file.name).name
+
+    class Meta:
+        model = models.JobNarration
+        fields = (
+            "id",
+            "job_id",
+            "owner",
+            "created_date",
+            "updated_date",
+            "filename",
+            "sample_rate",
+            "video_time_offset",
+            "start_wallclock",
+            "duration",
+            "metadata",
+        )
+        read_only_fields = fields
+
+
+class JobNarrationWriteSerializer(serializers.ModelSerializer):
+    file = serializers.FileField(required=True, write_only=True, allow_empty_file=False, max_length=MAX_FILENAME_LENGTH)
+
+    def validate_file(self, value):
+        if not isinstance(value, UploadedFile):
+            raise serializers.ValidationError("Invalid file type. Expected an UploadedFile instance.")
+
+        if not value.content_type.startswith("audio/"):
+            raise serializers.ValidationError("Invalid file type. Expected an audio/* content type.")
+
+        return value
+
+    class Meta:
+        model = models.JobNarration
+        fields = (
+            "file",
+            "sample_rate",
+            "video_time_offset",
+            "start_wallclock",
+            "duration",
+            "metadata",
+        )
+
+
 class CommentReadSerializer(serializers.ModelSerializer):
     owner = BasicUserSerializer(allow_null=True, required=False)
 
