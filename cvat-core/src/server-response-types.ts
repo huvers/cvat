@@ -183,6 +183,17 @@ export interface SerializedJobNarration {
     metadata: Record<string, any>;
 }
 
+export interface SerializedJobClassification {
+    id: number;
+    job_id: number;
+    label_id: number;
+    label_name: string;
+    label_color: string;
+    owner: SerializedUser | null;
+    created_date: string;
+    updated_date: string;
+}
+
 export type AttrInputType = 'select' | 'radio' | 'checkbox' | 'number' | 'text';
 export interface SerializedAttribute {
     name: string;

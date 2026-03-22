@@ -1027,6 +1027,26 @@ class JobNarration(TimestampedModel):
         default_permissions = ()
 
 
+class JobClassification(TimestampedModel):
+    job = models.ForeignKey(
+        Job, on_delete=models.CASCADE,
+        related_name="classifications", related_query_name="classification",
+    )
+    label = models.ForeignKey(Label, on_delete=models.CASCADE)
+    owner = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=['job', 'label'],
+                name='job_classification_unique',
+            ),
+        ]
+
+
 class RelatedFile(models.Model):
     data = models.ForeignKey(
         Data, on_delete=models.CASCADE,

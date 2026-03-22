@@ -4,6 +4,7 @@ import Tabs from 'antd/lib/tabs';
 import Typography from 'antd/lib/typography';
 
 import PhaseTrackEditor from '../phase-track-editor/phase-track-editor';
+import VideoClassificationEditor from '../video-classification-editor/video-classification-editor';
 import './styles.scss';
 
 export default function SurgerySidebar(): JSX.Element {
@@ -12,6 +13,11 @@ export default function SurgerySidebar(): JSX.Element {
             <Tabs
                 className='cvat-surgery-sidebar-tabs'
                 items={[
+                    {
+                        key: 'case-info',
+                        label: 'Case info',
+                        children: <VideoClassificationEditor />,
+                    },
                     {
                         key: 'narration',
                         label: 'Narration',
