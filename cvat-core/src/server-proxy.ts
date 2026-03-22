@@ -1648,6 +1648,44 @@ async function getJobTranscripts(jobID: number): Promise<SerializedJobTranscript
     }
 }
 
+async function updateJobTranscript(
+    jobID: number,
+    transcriptID: number,
+    correctedTranscript: string,
+): Promise<SerializedJobTranscript> {
+    const { backendAPI } = config;
+
+    try {
+        const response = await Axios.patch(
+            `${backendAPI}/jobs/${jobID}/transcripts`,
+            { id: transcriptID, corrected_transcript: correctedTranscript },
+            {
+                params: {
+                    ...enableOrganization(),
+                },
+            },
+        );
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function getSurgeryExport(jobID: number): Promise<Record<string, any>> {
+    const { backendAPI } = config;
+
+    try {
+        const response = await Axios.get(`${backendAPI}/jobs/${jobID}/surgery-export`, {
+            params: {
+                ...enableOrganization(),
+            },
+        });
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
 const validationLayout = (instance: 'tasks' | 'jobs') => async (
     id: number,
 ): Promise<SerializedJobValidationLayout | SerializedTaskValidationLayout> => {
@@ -2675,6 +2713,8 @@ export default Object.freeze({
         createClassification: createJobClassification,
         deleteClassification: deleteJobClassification,
         getTranscripts: getJobTranscripts,
+        updateTranscript: updateJobTranscript,
+        getSurgeryExport,
     }),
 
     users: Object.freeze({
