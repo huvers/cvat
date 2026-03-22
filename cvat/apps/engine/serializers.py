@@ -3676,8 +3676,9 @@ class IssueReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Issue
-        fields = ('id', 'frame', 'position', 'job', 'owner', 'assignee',
-            'created_date', 'updated_date', 'resolved', 'comments')
+        fields = ('id', 'frame', 'end_frame', 'position', 'job', 'owner', 'assignee',
+            'created_date', 'updated_date', 'resolved', 'comments',
+            'issue_type', 'narration')
         read_only_fields = fields
         extra_kwargs = {
             'created_date': { 'allow_null': True },
@@ -3690,10 +3691,29 @@ class IssueWriteSerializer(WriteOnceMixin, serializers.ModelSerializer):
         child=serializers.FloatField(), allow_empty=False,
     )
     message = serializers.CharField(style={'base_template': 'textarea.html'})
+    end_frame = serializers.IntegerField(required=False, allow_null=True, min_value=0)
+    issue_type = serializers.ChoiceField(
+        choices=['frame', 'interval', 'narration'], default='frame', required=False,
+    )
+    narration = serializers.PrimaryKeyRelatedField(
+        queryset=models.JobNarration.objects.all(), required=False, allow_null=True,
+    )
 
     def to_representation(self, instance):
         serializer = IssueReadSerializer(instance, context=self.context)
         return serializer.data
+
+    def validate(self, attrs):
+        issue_type = attrs.get('issue_type', 'frame')
+        if issue_type == 'interval' and not attrs.get('end_frame'):
+            raise serializers.ValidationError(
+                {'end_frame': 'end_frame is required for interval issues.'}
+            )
+        if issue_type == 'narration' and not attrs.get('narration'):
+            raise serializers.ValidationError(
+                {'narration': 'narration is required for narration issues.'}
+            )
+        return attrs
 
     def create(self, validated_data):
         message = validated_data.pop('message')
@@ -3704,7 +3724,8 @@ class IssueWriteSerializer(WriteOnceMixin, serializers.ModelSerializer):
 
     class Meta:
         model = models.Issue
-        fields = ('frame', 'position', 'job', 'assignee', 'message', 'resolved')
+        fields = ('frame', 'end_frame', 'position', 'job', 'assignee',
+            'message', 'resolved', 'issue_type', 'narration')
         write_once_fields = ('frame', 'job', 'message')
 
 class ManifestSerializer(serializers.ModelSerializer):

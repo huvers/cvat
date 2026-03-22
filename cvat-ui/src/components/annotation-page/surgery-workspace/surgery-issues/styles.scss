@@ -1,0 +1,91 @@
+// Copyright (C) CVAT.ai Corporation
+//
+// SPDX-License-Identifier: MIT
+
+.cvat-surgery-issues {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.cvat-surgery-issues-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cvat-surgery-issues-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    background: #fafafa;
+    border-radius: 4px;
+    border: 1px solid #f0f0f0;
+}
+
+.cvat-surgery-issues-frame-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .ant-input-number {
+        width: 80px;
+    }
+}
+
+.cvat-surgery-issues-spinner {
+    display: flex;
+    justify-content: center;
+    padding: 16px 0;
+}
+
+.cvat-surgery-issues-empty {
+    color: #888;
+    font-size: 12px;
+    text-align: center;
+    padding: 12px 0;
+    margin: 0;
+}
+
+.cvat-surgery-issues-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cvat-surgery-issues-item {
+    padding: 6px 8px;
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 4px;
+    font-size: 12px;
+
+    &-resolved {
+        opacity: 0.6;
+    }
+}
+
+.cvat-surgery-issues-item-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .ant-tag {
+        margin: 0;
+        font-size: 11px;
+    }
+}
+
+.cvat-surgery-issues-item-frames {
+    flex: 1;
+    font-variant-numeric: tabular-nums;
+    color: #555;
+}
+
+.cvat-surgery-issues-item-meta {
+    font-size: 11px;
+    color: #999;
+}

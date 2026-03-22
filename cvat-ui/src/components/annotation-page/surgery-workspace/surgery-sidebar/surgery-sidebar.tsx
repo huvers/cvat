@@ -18,6 +18,7 @@ import serverProxy from 'cvat-core/src/server-proxy';
 
 import NarrationTab from '../narration-tab/narration-tab';
 import PhaseTrackEditor from '../phase-track-editor/phase-track-editor';
+import SurgeryIssues from '../surgery-issues/surgery-issues';
 import VideoClassificationEditor from '../video-classification-editor/video-classification-editor';
 import './styles.scss';
 
@@ -75,6 +76,11 @@ export default function SurgerySidebar(): JSX.Element {
                         key: 'phase-track',
                         label: 'Phase track',
                         children: <PhaseTrackEditor />,
+                    },
+                    {
+                        key: 'issues',
+                        label: 'Issues',
+                        children: <SurgeryIssues />,
                     },
                 ]}
             />
