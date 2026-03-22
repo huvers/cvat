@@ -65,12 +65,13 @@ ____
     - Route via CVAT webhooks (or an internal event bus) to trigger transcription + downstream dataset generation.
     - Keep PHI boundaries in mind (controlled storage for audio/transcripts).
 
-- [ ] Surgeon-first “Queue” UX (one click: start next assigned task/job)
+- [x] Surgeon-first “Queue” UX (one click: start next assigned task/job)
   - Leading Platform: A “Queue” tab to start work quickly; can hide unassigned tasks so annotators only see their queue.
   - CVAT Community gap: Navigation is project/task/job browsing; stages are not role-gated and are easy to flip accidentally.
   - Build notes:
     - Add a top-level “My Work” route showing only assigned jobs requiring surgeon action, with Start/Resume/Next.
     - Enforce restrictions via OPA policies and/or UI gating to prevent browsing other data.
+  - Status: `/my-work` route with `MyWorkPage` component. Auto-filters to assigned + non-completed jobs sorted by most recently updated. Job cards with Start/Resume one-click action. “My Work” nav button in header (first link). Remaining gaps: OPA policy enforcement to restrict browsing, “Next” button to auto-advance to next job.
 
 - [x] Video-level classification (whole-procedure tags, case metadata)
   - Leading Platform: Global classifications and project-level structures; supports bulk classification.
