@@ -57,13 +57,14 @@ ____
     - Persist audio as a job/task artifact with alignment metadata (`video_time_offset`, `sample_rate`, `start_wallclock`, etc.).
     - Add waveform visualization and timecode markers tied to video frames.
 
-- [ ] Narration-to-text pipeline hooks (for reasoning dataset distillation)
+- [x] Narration-to-text pipeline hooks (for reasoning dataset distillation)
   - Leading Platform: Multimodal workflows + automation/webhooks + programmatic label access.
   - CVAT Community gap: Webhooks exist, but there are no narration artifacts or narration-specific triggers by default.
   - Build notes:
     - Extend the event model to emit `narration_uploaded`, `narration_finalized`, `transcript_ready`.
     - Route via CVAT webhooks (or an internal event bus) to trigger transcription + downstream dataset generation.
     - Keep PHI boundaries in mind (controlled storage for audio/transcripts).
+  - Status: `JobTranscript` model (raw + corrected text, word timestamps, status, model info) with migration 0102. Two-stage pipeline worker: Parakeet-TDT-0.6B-v2 ASR → LLM post-correction with surgical context from video-level classifications. Auto-triggered via `post_save` signal on `JobNarration` → RQ job. Webhook events added: `create:narration`, `create:transcript`, `update:transcript`. `TranscriptViewer` component in surgery sidebar Narration tab with live polling during processing. GET /jobs/{id}/transcripts API. Configurable via Django settings: `TRANSCRIPTION_ASR_URL`, `TRANSCRIPTION_LLM_URL`, `TRANSCRIPTION_LLM_MODEL`.
 
 - [x] Surgeon-first “Queue” UX (one click: start next assigned task/job)
   - Leading Platform: A “Queue” tab to start work quickly; can hide unassigned tasks so annotators only see their queue.

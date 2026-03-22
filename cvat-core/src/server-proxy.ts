@@ -20,6 +20,7 @@ import {
     SerializedQualityReportData, APIQualityReportsFilter, APIAnalyticsEventsFilter, APIConsensusSettingsFilter,
     SerializedRequest, SerializedJobValidationLayout, SerializedTaskValidationLayout, SerializedConsensusSettingsData,
     SerializedApiToken, APIApiTokensFilter, SerializedJobNarration, SerializedJobClassification,
+    SerializedJobTranscript,
 } from './server-response-types';
 import { APIApiTokenModifiableFields } from './server-request-types';
 import { PaginatedResource, SerializedModel, UpdateStatusData } from './core-types';
@@ -1632,6 +1633,21 @@ async function deleteJobClassification(
     }
 }
 
+async function getJobTranscripts(jobID: number): Promise<SerializedJobTranscript[]> {
+    const { backendAPI } = config;
+
+    try {
+        const response = await Axios.get(`${backendAPI}/jobs/${jobID}/transcripts`, {
+            params: {
+                ...enableOrganization(),
+            },
+        });
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
 const validationLayout = (instance: 'tasks' | 'jobs') => async (
     id: number,
 ): Promise<SerializedJobValidationLayout | SerializedTaskValidationLayout> => {
@@ -2658,6 +2674,7 @@ export default Object.freeze({
         getClassifications: getJobClassifications,
         createClassification: createJobClassification,
         deleteClassification: deleteJobClassification,
+        getTranscripts: getJobTranscripts,
     }),
 
     users: Object.freeze({

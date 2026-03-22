@@ -19,6 +19,8 @@ class Events:
         "organization": ["update", "delete"],
         "invitation": ["create", "delete"],
         "membership": ["create", "update", "delete"],
+        "narration": ["create"],
+        "transcript": ["create", "update"],
     }
 
     @classmethod

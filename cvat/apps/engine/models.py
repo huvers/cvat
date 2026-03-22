@@ -1047,6 +1047,31 @@ class JobClassification(TimestampedModel):
         ]
 
 
+class TranscriptStatus(str, models.Choices):
+    PENDING = 'pending'
+    PROCESSING = 'processing'
+    COMPLETED = 'completed'
+    FAILED = 'failed'
+
+
+class JobTranscript(TimestampedModel):
+    narration = models.OneToOneField(
+        JobNarration, on_delete=models.CASCADE,
+        related_name="transcript", related_query_name="transcript",
+    )
+    status = models.CharField(
+        max_length=16, choices=TranscriptStatus.choices, default=TranscriptStatus.PENDING,
+    )
+    raw_transcript = models.TextField(blank=True, default='')
+    corrected_transcript = models.TextField(blank=True, default='')
+    word_timestamps = models.JSONField(default=list, blank=True)
+    error_message = models.TextField(blank=True, default='')
+    model_info = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        default_permissions = ()
+
+
 class RelatedFile(models.Model):
     data = models.ForeignKey(
         Data, on_delete=models.CASCADE,
