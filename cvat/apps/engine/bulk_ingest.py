@@ -8,8 +8,8 @@ Bulk ingestion from S3 cloud storage using LeRobot directory layout.
 Layout expected:
     s3://bucket/<procedure>/videos/chunk-XXX/observation.images.endoscope/episode_XXXXXX.mp4
 
-Each episode becomes one CVAT task, auto-classified with the procedure type,
-and optionally weak-labeled if a matching temporal model exists.
+Each episode becomes one CVAT task, tracked via Dataset/DatasetEpisode,
+auto-classified with the procedure type, and optionally weak-labeled.
 """
 
 import logging
@@ -23,6 +23,9 @@ from cvat.apps.engine.cloud_provider import db_storage_to_storage_instance
 from cvat.apps.engine.models import (
     CloudStorage,
     Data,
+    Dataset,
+    DatasetEpisode,
+    EpisodeStatus,
     Job,
     JobClassification,
     Label,
@@ -46,15 +49,15 @@ class DiscoveredEpisode:
     chunk: str
 
 
-def discover_episodes(cloud_storage: CloudStorage, procedure_prefix: str) -> list[DiscoveredEpisode]:
+def discover_episodes(cloud_storage: CloudStorage, s3_prefix: str) -> list[DiscoveredEpisode]:
     """
     Scan an S3 prefix for LeRobot-format episode videos.
 
     Looks for files matching:
-        {procedure_prefix}/videos/chunk-XXX/observation.images.endoscope/episode_XXXXXX.mp4
+        {s3_prefix}/videos/chunk-XXX/observation.images.endoscope/episode_XXXXXX.mp4
     """
     storage = db_storage_to_storage_instance(cloud_storage)
-    prefix = f"{procedure_prefix}/videos/"
+    prefix = f"{s3_prefix}/videos/"
 
     logger.info("Scanning s3://%s/%s for episodes", cloud_storage.resource, prefix)
     files = storage.list_files(prefix=prefix)
@@ -80,22 +83,63 @@ def discover_episodes(cloud_storage: CloudStorage, procedure_prefix: str) -> lis
     return episodes
 
 
+def sync_dataset_episodes(dataset: Dataset) -> dict:
+    """
+    Scan S3 and update the DatasetEpisode table.
+    New episodes get status='discovered'. Existing ones are unchanged.
+    Returns counts of new vs existing episodes.
+    """
+    try:
+        discovered = discover_episodes(dataset.cloud_storage, dataset.s3_prefix)
+    except Exception as exc:
+        logger.exception("Failed to scan S3 for dataset %d", dataset.id)
+        return {"new": 0, "existing": 0, "error": str(exc)}
+
+    existing_names = set(
+        DatasetEpisode.objects.filter(dataset=dataset)
+        .values_list("episode_name", flat=True)
+    )
+
+    new_count = 0
+    for ep in discovered:
+        if ep.episode_name not in existing_names:
+            DatasetEpisode.objects.create(
+                dataset=dataset,
+                episode_name=ep.episode_name,
+                s3_key=ep.s3_key,
+                status=EpisodeStatus.DISCOVERED,
+            )
+            new_count += 1
+
+    logger.info(
+        "Dataset %d sync: %d new, %d existing",
+        dataset.id, new_count, len(existing_names),
+    )
+    return {"new": new_count, "existing": len(existing_names)}
+
+
 @transaction.atomic
 def create_task_for_episode(
-    episode: DiscoveredEpisode,
+    episode: DatasetEpisode,
     *,
     cloud_storage: CloudStorage,
     project: Project | None,
     procedure_type: str,
     owner: User,
-) -> Task:
-    """Create a CVAT task for a single episode video."""
+) -> Task | None:
+    """Create a CVAT task for a single episode and link it."""
+    if episode.task_id is not None:
+        logger.info("Episode %r already has task %d, skipping", episode.episode_name, episode.task_id)
+        return None
+
     task_name = f"{procedure_type}/{episode.episode_name}"
 
-    # Check if task already exists (idempotent)
+    # Check if task already exists by name (defensive)
     existing = Task.objects.filter(name=task_name, project=project).first()
     if existing:
-        logger.info("Task %r already exists (id=%d), skipping", task_name, existing.id)
+        episode.task = existing
+        episode.status = EpisodeStatus.INGESTED
+        episode.save(update_fields=["task", "status", "updated_date"])
         return None
 
     # Create Data object pointing to cloud storage
@@ -106,10 +150,8 @@ def create_task_for_episode(
     )
     db_data.make_dirs()
 
-    # Register the S3 key as a server file
     ServerFile.objects.create(file=episode.s3_key, data=db_data)
 
-    # Create the task
     db_task = Task.objects.create(
         name=task_name,
         owner=owner,
@@ -118,12 +160,10 @@ def create_task_for_episode(
         organization=cloud_storage.organization,
     )
 
-    # Create segment + job (CVAT normally does this in background processing,
-    # but we create a placeholder so the job is immediately visible)
     segment = Segment.objects.create(
         task=db_task,
         start_frame=0,
-        stop_frame=0,  # Will be updated when data is processed
+        stop_frame=0,
     )
     job = Job.objects.create(segment=segment)
 
@@ -138,61 +178,74 @@ def create_task_for_episode(
         JobClassification.objects.get_or_create(
             job=job, label=procedure_label, defaults={"owner": owner},
         )
-    else:
-        logger.warning(
-            "Label %r not found for project/task — skipping auto-classification for %s",
-            procedure_type, task_name,
-        )
+
+    # Link episode to task
+    episode.task = db_task
+    episode.status = EpisodeStatus.INGESTED
+    episode.save(update_fields=["task", "status", "updated_date"])
 
     logger.info("Created task %r (id=%d) for episode %s", task_name, db_task.id, episode.s3_key)
     return db_task
 
 
 def run_bulk_ingest(
-    cloud_storage_id: int,
-    procedure_prefix: str,
-    project_id: int | None,
-    owner_id: int,
+    dataset_id: int | None = None,
+    *,
+    # Legacy params (used when dataset_id is None)
+    cloud_storage_id: int | None = None,
+    procedure_prefix: str | None = None,
+    project_id: int | None = None,
+    owner_id: int | None = None,
     trigger_weak_labeling: bool = False,
 ) -> dict:
     """
     Main entry point (called as an RQ job).
 
-    Discovers episodes in S3, creates tasks, auto-classifies,
-    and optionally triggers weak labeling.
+    If dataset_id is provided, uses the Dataset entity.
+    Otherwise falls back to legacy params and creates a Dataset.
     """
-    try:
-        cloud_storage = CloudStorage.objects.get(id=cloud_storage_id)
-    except CloudStorage.DoesNotExist:
-        logger.error("Cloud storage %d not found", cloud_storage_id)
-        return {"created": 0, "skipped": 0, "errors": 1, "error": "Cloud storage not found"}
 
-    try:
-        owner = User.objects.get(id=owner_id)
-    except User.DoesNotExist:
-        logger.error("User %d not found", owner_id)
-        return {"created": 0, "skipped": 0, "errors": 1, "error": "User not found"}
-
-    project = None
-    if project_id:
+    # Resolve or create dataset
+    if dataset_id:
         try:
-            project = Project.objects.get(id=project_id)
-        except Project.DoesNotExist:
-            logger.error("Project %d not found", project_id)
-            return {"created": 0, "skipped": 0, "errors": 1, "error": "Project not found"}
+            dataset = Dataset.objects.get(id=dataset_id)
+        except Dataset.DoesNotExist:
+            logger.error("Dataset %d not found", dataset_id)
+            return {"created": 0, "skipped": 0, "errors": 1, "error": "Dataset not found"}
+        owner = dataset.owner
+    else:
+        # Legacy path: create dataset from params
+        if not cloud_storage_id or not procedure_prefix or not owner_id:
+            return {"created": 0, "skipped": 0, "errors": 1, "error": "Missing required params"}
+        try:
+            cloud_storage = CloudStorage.objects.get(id=cloud_storage_id)
+            owner = User.objects.get(id=owner_id)
+            project = Project.objects.get(id=project_id) if project_id else None
+        except (CloudStorage.DoesNotExist, User.DoesNotExist, Project.DoesNotExist) as exc:
+            logger.error("Lookup failed: %s", exc)
+            return {"created": 0, "skipped": 0, "errors": 1, "error": str(exc)}
 
-    # Derive procedure type from prefix (last path component)
-    procedure_type = procedure_prefix.rstrip("/").split("/")[-1]
+        procedure_type = procedure_prefix.rstrip("/").split("/")[-1]
+        dataset, _ = Dataset.objects.get_or_create(
+            cloud_storage=cloud_storage,
+            s3_prefix=procedure_prefix,
+            defaults={
+                "name": procedure_type,
+                "procedure_type": procedure_type,
+                "project": project,
+                "owner": owner,
+            },
+        )
 
-    try:
-        episodes = discover_episodes(cloud_storage, procedure_prefix)
-    except Exception as exc:
-        logger.exception("Failed to scan S3 for episodes")
-        return {"created": 0, "skipped": 0, "errors": 1, "error": f"S3 scan failed: {exc}"}
+    # Sync episodes from S3
+    sync_result = sync_dataset_episodes(dataset)
+    if "error" in sync_result:
+        return {"created": 0, "skipped": 0, "errors": 1, "error": sync_result["error"]}
 
-    if not episodes:
-        logger.warning("No episodes found under %s", procedure_prefix)
-        return {"created": 0, "skipped": 0, "errors": 0}
+    # Ingest discovered episodes
+    episodes = DatasetEpisode.objects.filter(
+        dataset=dataset, status=EpisodeStatus.DISCOVERED,
+    )
 
     created = 0
     skipped = 0
@@ -202,9 +255,9 @@ def run_bulk_ingest(
         try:
             task = create_task_for_episode(
                 episode,
-                cloud_storage=cloud_storage,
-                project=project,
-                procedure_type=procedure_type,
+                cloud_storage=dataset.cloud_storage,
+                project=dataset.project,
+                procedure_type=dataset.procedure_type,
                 owner=owner,
             )
             if task is None:
@@ -216,23 +269,30 @@ def run_bulk_ingest(
             errors += 1
 
     logger.info(
-        "Bulk ingest complete: %d created, %d skipped, %d errors",
-        created, skipped, errors,
+        "Bulk ingest complete for dataset %d: %d created, %d skipped, %d errors",
+        dataset.id, created, skipped, errors,
     )
 
-    # Optionally trigger weak labeling for all new jobs
+    # Trigger weak labeling for newly ingested episodes
     if trigger_weak_labeling and created > 0:
-        import django_rq
-        queue = django_rq.get_queue(settings.CVAT_QUEUES.AUTO_ANNOTATION.value)
-        for episode in episodes:
-            task_name = f"{procedure_type}/{episode.episode_name}"
-            task = Task.objects.filter(name=task_name, project=project).first()
-            if task:
-                for job in Job.objects.filter(segment__task=task):
-                    queue.enqueue(
-                        "cvat.apps.engine.weak_labeling.run_weak_labeling",
-                        job_id=job.id,
-                        job_timeout=900,
-                    )
+        try:
+            import django_rq
+            queue = django_rq.get_queue(settings.CVAT_QUEUES.AUTO_ANNOTATION.value)
+            for episode in DatasetEpisode.objects.filter(dataset=dataset, status=EpisodeStatus.INGESTED):
+                if episode.task_id:
+                    for job in Job.objects.filter(segment__task_id=episode.task_id):
+                        queue.enqueue(
+                            "cvat.apps.engine.weak_labeling.run_weak_labeling",
+                            job_id=job.id,
+                            job_timeout=900,
+                        )
+        except Exception:
+            logger.exception("Failed to enqueue weak labeling for dataset %d", dataset.id)
 
-    return {"created": created, "skipped": skipped, "errors": errors}
+    return {
+        "dataset_id": dataset.id,
+        "created": created,
+        "skipped": skipped,
+        "errors": errors,
+        "sync": sync_result,
+    }

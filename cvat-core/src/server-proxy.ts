@@ -2780,6 +2780,42 @@ export default Object.freeze({
                 throw generateError(errorData);
             }
         },
+        getDatasets: async (): Promise<any[]> => {
+            const { backendAPI } = config;
+            try {
+                const response = await Axios.get(`${backendAPI}/datasets`, {
+                    params: { ...enableOrganization() },
+                });
+                return response.data.results ?? response.data;
+            } catch (errorData) {
+                throw generateError(errorData);
+            }
+        },
+        syncDataset: async (datasetId: number): Promise<Record<string, any>> => {
+            const { backendAPI } = config;
+            try {
+                const response = await Axios.post(
+                    `${backendAPI}/datasets/${datasetId}/sync`,
+                    {},
+                    { params: { ...enableOrganization() } },
+                );
+                return response.data;
+            } catch (errorData) {
+                throw generateError(errorData);
+            }
+        },
+        ingestDataset: async (datasetId: number): Promise<void> => {
+            const { backendAPI } = config;
+            try {
+                await Axios.post(
+                    `${backendAPI}/datasets/${datasetId}/ingest`,
+                    {},
+                    { params: { ...enableOrganization() } },
+                );
+            } catch (errorData) {
+                throw generateError(errorData);
+            }
+        },
     }),
 
     users: Object.freeze({

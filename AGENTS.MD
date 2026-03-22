@@ -96,12 +96,13 @@ ____
     - Store ontology edits as events for traceability.
   - Status: `OntologyVersion` model (immutable JSON snapshot of project labels + attributes + sublabels, version number, created_by, description) with migration 0105. `pinned_ontology_version` FK on Project. Auto-snapshot via post_save/post_delete signals on Label and AttributeSpec. `ontology.py`: snapshot serialization, version creation, and structured diff computation (added/removed/renamed labels + attribute changes). API: `GET/POST /api/ontology-versions`, `GET /api/ontology-versions/{id}`, `GET /api/ontology-versions/diff?v1=X&v2=Y`. UI: `/ontology` page with version history cards, label chips, and diff viewer.
 
-- [ ] Dataset-first project model (attach new data units over time)
+- [x] Dataset-first project model (attach new data units over time)
   - Leading Platform: Projects label data from datasets attached to the project.
   - CVAT Community gap: Tasks are created with fixed data; you can’t add more data later (must create a new task).
   - Build notes:
     - Add a “Dataset” entity (or a high-level abstraction over tasks) to support continuous ingestion while keeping ontology/workflow consistent.
     - Provide “attach dataset” operations and a stable case ID so narration/labels link across derived clips.
+  - Status: `Dataset` model (name, procedure_type, cloud_storage FK, s3_prefix, project FK) + `DatasetEpisode` model (episode_name, s3_key, task FK, status: discovered→ingested→annotated→exported) with migration 0106. Bulk ingest refactored to create/use Dataset entities. `POST /api/datasets/{id}/sync` re-scans S3 for new episodes. `POST /api/datasets/{id}/ingest` creates tasks for discovered episodes. `GET /api/datasets/{id}/episodes` lists episodes with status filter. `DatasetsPage` at `/datasets`: table with episode status breakdown, progress bars, Sync + Ingest buttons per dataset.
 
 - [x] Bulk ingest from cloud storage folders + auto-task creation at scale
   - Leading Platform: Cloud integrations + metadata-driven import; signed URLs can be used without storing them.

@@ -1089,6 +1089,72 @@ class JobTranscript(TimestampedModel):
         default_permissions = ()
 
 
+class EpisodeStatus(str, models.Choices):
+    DISCOVERED = 'discovered'
+    INGESTED = 'ingested'
+    ANNOTATED = 'annotated'
+    EXPORTED = 'exported'
+
+
+class Dataset(TimestampedModel):
+    """A collection of surgical procedure episodes from a single S3 prefix."""
+    name = SafeCharField(max_length=256)
+    procedure_type = SafeCharField(max_length=128)
+    cloud_storage = models.ForeignKey(
+        CloudStorage, on_delete=models.CASCADE,
+        related_name="datasets", related_query_name="dataset",
+    )
+    s3_prefix = models.CharField(max_length=1024)
+    project = models.ForeignKey(
+        Project, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="datasets", related_query_name="dataset",
+    )
+    owner = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=['cloud_storage', 's3_prefix'],
+                name='dataset_prefix_unique',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.procedure_type})"
+
+
+class DatasetEpisode(TimestampedModel):
+    """A single episode (video) within a dataset."""
+    dataset = models.ForeignKey(
+        Dataset, on_delete=models.CASCADE,
+        related_name="episodes", related_query_name="episode",
+    )
+    episode_name = SafeCharField(max_length=256)
+    s3_key = models.CharField(max_length=1024)
+    task = models.ForeignKey(
+        Task, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="dataset_episodes", related_query_name="dataset_episode",
+    )
+    status = models.CharField(
+        max_length=16, choices=EpisodeStatus.choices, default=EpisodeStatus.DISCOVERED,
+    )
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=['dataset', 'episode_name'],
+                name='dataset_episode_unique',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.episode_name} ({self.status})"
+
+
 class OntologyVersion(TimestampedModel):
     """Immutable snapshot of a project's label schema at a point in time."""
     project = models.ForeignKey(

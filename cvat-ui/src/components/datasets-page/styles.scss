@@ -1,0 +1,41 @@
+// Copyright (C) CVAT.ai Corporation
+//
+// SPDX-License-Identifier: MIT
+
+.cvat-datasets-page {
+    padding: 24px 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.cvat-datasets-header {
+    margin-bottom: 24px;
+}
+
+.cvat-datasets-spinner {
+    display: flex;
+    justify-content: center;
+    padding: 48px 0;
+}
+
+.cvat-dataset-episodes-col {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cvat-dataset-episode-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+
+    .ant-tag {
+        margin: 0;
+        font-size: 10px;
+    }
+}
+
+.cvat-dataset-actions {
+    display: flex;
+    gap: 6px;
+}

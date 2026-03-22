@@ -3340,3 +3340,56 @@ class SurgeryQAViewSet(viewsets.ViewSet):
             )
         metrics = compute_project_metrics(int(project_id))
         return Response(metrics)
+
+
+class DatasetViewSet(viewsets.ModelViewSet):
+    """CRUD for surgery datasets + sync and ingest actions."""
+    queryset = models.Dataset.objects.all().order_by('-created_date')
+    serializer_class = None  # set dynamically
+
+    def get_serializer_class(self):
+        from cvat.apps.engine.serializers import DatasetReadSerializer, DatasetWriteSerializer
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return DatasetReadSerializer
+        return DatasetWriteSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+    @extend_schema(summary='Sync dataset episodes from S3 (discover new videos)')
+    @action(detail=True, methods=['POST'], url_path='sync')
+    def sync(self, request, pk=None):
+        dataset = self.get_object()
+        from cvat.apps.engine.bulk_ingest import sync_dataset_episodes
+        result = sync_dataset_episodes(dataset)
+        return Response(result)
+
+    @extend_schema(summary='Ingest discovered episodes (create tasks)')
+    @action(detail=True, methods=['POST'], url_path='ingest')
+    def ingest(self, request, pk=None):
+        dataset = self.get_object()
+        trigger_weak_labeling = request.data.get('trigger_weak_labeling', False)
+
+        import django_rq
+        queue = django_rq.get_queue(settings.CVAT_QUEUES.IMPORT_DATA.value)
+        queue.enqueue(
+            'cvat.apps.engine.bulk_ingest.run_bulk_ingest',
+            dataset_id=dataset.id,
+            trigger_weak_labeling=trigger_weak_labeling,
+            job_timeout=1800,
+        )
+        return Response(
+            {'detail': f'Ingest queued for dataset {dataset.name}'},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @extend_schema(summary='List episodes in a dataset')
+    @action(detail=True, methods=['GET'], url_path='episodes')
+    def episodes(self, request, pk=None):
+        dataset = self.get_object()
+        from cvat.apps.engine.serializers import DatasetEpisodeSerializer
+        qs = dataset.episodes.all().order_by('episode_name')
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return Response(DatasetEpisodeSerializer(qs, many=True).data)
