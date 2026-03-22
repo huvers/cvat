@@ -34,28 +34,31 @@ ____
 
 ## P0 checklist (core workflow)
 
-- [ ] Temporal range labeling for phases/subtasks/gestures (interval annotations)
+- [x] Temporal range labeling for phases/subtasks/gestures (interval annotations)
   - Leading Platform: Apply classifications over frame ranges via explicit “set start,” “set end,” “add range” controls/hotkeys.
   - CVAT Community gap: “Tags” are frame-based; common workaround is tagging the first frame and post-processing.
   - Build notes:
     - Add a first-class `IntervalTag`/`IntervalClassification` type storing `[start_frame, end_frame]` + label/attributes.
     - Add timeline UI to create/resize/lock intervals, snap to frame boundaries, and show stacked phase tracks.
     - Export intervals directly; optionally render to per-frame tags for legacy exporters.
+  - Status: Backend `LabeledInterval` model + serializers + CRUD API. Frontend `SerializedInterval` type added to `SerializedCollection`. `PhaseTrackEditor` component in Surgery sidebar: label selector, start/end frame inputs with current-frame shortcuts, timeline visualization with colored bars and live cursor, inline start/end editing, auto vs manual visual distinction.
 
-- [ ] Multimodal “video + narration” workspace
+- [x] Multimodal “video + narration” workspace
   - Leading Platform: “Multimodal annotation in one view” with customizable multimodal layouts.
   - CVAT Community gap: UI and docs focus on “visual datasets” rather than multimodal (audio+video) workspaces.
   - Build notes:
     - Implement a multimodal panel system in the Job UI: video player + timeline + “Narration” tool + “Phase track” editor.
     - Add a “Procedure profile” to lock the layout and reduce surgeon cognitive load.
+  - Status: `SurgeryWorkspace` is the default workspace for all 2D jobs. 4-tab sidebar: Case info, Narration (recorder + transcripts), Phase track (interval editor + timeline), Issues. Footer with Export JSON + Submit & Next.
 
-- [ ] Audio narration capture (record, review, re-record) with time sync to video
+- [x] Audio narration capture (record, review, re-record) with time sync to video
   - Leading Platform: Audio modality support with time-region constructs down to millisecond ranges.
   - CVAT Community gap: No native audio waveform/timestamp labeling editor or audio annotation constructs in core.
   - Build notes:
     - Add in-browser recording (WebAudio `getUserMedia`) while watching/controlling video playback.
     - Persist audio as a job/task artifact with alignment metadata (`video_time_offset`, `sample_rate`, `start_wallclock`, etc.).
     - Add waveform visualization and timecode markers tied to video frames.
+  - Status: `JobNarration` backend model + REST API. `NarrationRecorder` component (WebAudio capture, preview, upload) wired into Surgery sidebar Narration tab. Upload triggers transcript refresh. Two-stage transcription pipeline (Parakeet ASR + LLM correction) auto-triggers on upload.
 
 - [x] Narration-to-text pipeline hooks (for reasoning dataset distillation)
   - Leading Platform: Multimodal workflows + automation/webhooks + programmatic label access.
