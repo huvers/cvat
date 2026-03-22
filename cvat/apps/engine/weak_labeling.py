@@ -82,10 +82,19 @@ def _call_model_endpoint(model: SurgeryModel, job: Job) -> list[dict]:
         "config": model.config,
     }
 
-    response = requests.post(model.endpoint_url, json=payload, timeout=600)
+    response = requests.post(model.endpoint_url, json=payload, timeout=(10, 600))
     response.raise_for_status()
-    data = response.json()
-    return data.get("intervals", [])
+
+    try:
+        data = response.json()
+    except ValueError as exc:
+        raise ValueError(f"Model endpoint returned non-JSON response: {exc}") from exc
+
+    intervals = data.get("intervals", [])
+    if not isinstance(intervals, list):
+        raise ValueError(f"Model returned non-list intervals: {type(intervals)}")
+
+    return intervals
 
 
 def _resolve_label(job: Job, label_name: str) -> Label | None:
@@ -105,6 +114,14 @@ def _write_predicted_intervals(job: Job, predictions: list[dict], model: Surgery
     """
     created = 0
     for pred in predictions:
+        if not isinstance(pred, dict):
+            logger.warning("Skipping non-dict prediction: %r", pred)
+            continue
+
+        if "start_frame" not in pred or "end_frame" not in pred:
+            logger.warning("Skipping prediction missing start_frame/end_frame: %r", pred)
+            continue
+
         label = _resolve_label(job, pred.get("label", ""))
         if label is None:
             logger.warning(

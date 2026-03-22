@@ -96,7 +96,7 @@ def create_task_for_episode(
     existing = Task.objects.filter(name=task_name, project=project).first()
     if existing:
         logger.info("Task %r already exists (id=%d), skipping", task_name, existing.id)
-        return existing
+        return None
 
     # Create Data object pointing to cloud storage
     db_data = Data.objects.create(
@@ -161,14 +161,35 @@ def run_bulk_ingest(
     Discovers episodes in S3, creates tasks, auto-classifies,
     and optionally triggers weak labeling.
     """
-    cloud_storage = CloudStorage.objects.get(id=cloud_storage_id)
-    owner = User.objects.get(id=owner_id)
-    project = Project.objects.get(id=project_id) if project_id else None
+    try:
+        cloud_storage = CloudStorage.objects.get(id=cloud_storage_id)
+    except CloudStorage.DoesNotExist:
+        logger.error("Cloud storage %d not found", cloud_storage_id)
+        return {"created": 0, "skipped": 0, "errors": 1, "error": "Cloud storage not found"}
+
+    try:
+        owner = User.objects.get(id=owner_id)
+    except User.DoesNotExist:
+        logger.error("User %d not found", owner_id)
+        return {"created": 0, "skipped": 0, "errors": 1, "error": "User not found"}
+
+    project = None
+    if project_id:
+        try:
+            project = Project.objects.get(id=project_id)
+        except Project.DoesNotExist:
+            logger.error("Project %d not found", project_id)
+            return {"created": 0, "skipped": 0, "errors": 1, "error": "Project not found"}
 
     # Derive procedure type from prefix (last path component)
     procedure_type = procedure_prefix.rstrip("/").split("/")[-1]
 
-    episodes = discover_episodes(cloud_storage, procedure_prefix)
+    try:
+        episodes = discover_episodes(cloud_storage, procedure_prefix)
+    except Exception as exc:
+        logger.exception("Failed to scan S3 for episodes")
+        return {"created": 0, "skipped": 0, "errors": 1, "error": f"S3 scan failed: {exc}"}
+
     if not episodes:
         logger.warning("No episodes found under %s", procedure_prefix)
         return {"created": 0, "skipped": 0, "errors": 0}
@@ -186,7 +207,9 @@ def run_bulk_ingest(
                 procedure_type=procedure_type,
                 owner=owner,
             )
-            if task.id:
+            if task is None:
+                skipped += 1
+            else:
                 created += 1
         except Exception:
             logger.exception("Failed to create task for %s", episode.s3_key)

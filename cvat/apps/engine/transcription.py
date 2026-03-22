@@ -13,8 +13,9 @@ Configuration (django settings):
   TRANSCRIPTION_LLM_MODEL – Model name for the LLM (e.g. "meta/llama-3.1-8b-instruct")
 """
 
-import json
 import logging
+import os
+import time
 
 import requests
 from django.conf import settings
@@ -34,6 +35,30 @@ DEFAULT_ASR_URL = "http://localhost:8888/asr"
 DEFAULT_LLM_URL = "http://localhost:8000/v1/chat/completions"
 DEFAULT_LLM_MODEL = "meta/llama-3.1-8b-instruct"
 
+MAX_RETRIES = 3
+RETRY_BACKOFF = 5  # seconds, doubles each retry
+
+
+# ── Retry helper ─────────────────────────────────────────────────────────────
+
+def _retry_request(fn, *, retries=MAX_RETRIES, backoff=RETRY_BACKOFF):
+    """Call fn() with exponential backoff on connection/timeout errors."""
+    last_exc = None
+    for attempt in range(retries):
+        try:
+            return fn()
+        except (requests.ConnectionError, requests.Timeout) as exc:
+            last_exc = exc
+            wait = backoff * (2 ** attempt)
+            logger.warning(
+                "Request failed (attempt %d/%d), retrying in %ds: %s",
+                attempt + 1, retries, wait, exc,
+            )
+            time.sleep(wait)
+        except requests.HTTPError:
+            raise  # Don't retry 4xx/5xx — they're deterministic
+    raise last_exc
+
 
 # ── ASR stage ────────────────────────────────────────────────────────────────
 
@@ -42,16 +67,30 @@ def _run_asr(audio_path: str) -> dict:
     Send audio to Parakeet-TDT-0.6B-v2 NeMo service.
     Returns {"text": "...", "words": [{"word": "...", "start": 0.0, "end": 0.1}, ...]}.
     """
+    if not os.path.isfile(audio_path):
+        raise FileNotFoundError(f"Narration audio file not found: {audio_path}")
+
     asr_url = getattr(settings, "TRANSCRIPTION_ASR_URL", DEFAULT_ASR_URL)
 
-    with open(audio_path, "rb") as f:
-        response = requests.post(
-            asr_url,
-            files={"audio": f},
-            timeout=600,
-        )
-    response.raise_for_status()
-    return response.json()
+    def _do_request():
+        with open(audio_path, "rb") as f:
+            response = requests.post(
+                asr_url,
+                files={"audio": f},
+                timeout=(10, 600),  # (connect_timeout, read_timeout)
+            )
+        response.raise_for_status()
+        return response.json()
+
+    result = _retry_request(_do_request)
+
+    # Validate response structure
+    if not isinstance(result, dict):
+        raise ValueError(f"ASR returned non-dict response: {type(result)}")
+    if "text" not in result:
+        logger.warning("ASR response missing 'text' field, using empty string")
+
+    return result
 
 
 # ── LLM correction stage ────────────────────────────────────────────────────
@@ -83,6 +122,9 @@ def _run_llm_correction(raw_text: str, context: str) -> str:
     Send raw transcript + surgical context to LLM for terminology correction.
     Uses OpenAI-compatible chat completions API.
     """
+    if not raw_text.strip():
+        return raw_text  # Nothing to correct
+
     llm_url = getattr(settings, "TRANSCRIPTION_LLM_URL", DEFAULT_LLM_URL)
     llm_model = getattr(settings, "TRANSCRIPTION_LLM_MODEL", DEFAULT_LLM_MODEL)
 
@@ -100,10 +142,18 @@ def _run_llm_correction(raw_text: str, context: str) -> str:
         "max_tokens": 4096,
     }
 
-    response = requests.post(llm_url, json=payload, timeout=120)
-    response.raise_for_status()
-    data = response.json()
-    return data["choices"][0]["message"]["content"].strip()
+    def _do_request():
+        response = requests.post(llm_url, json=payload, timeout=(10, 120))
+        response.raise_for_status()
+        return response.json()
+
+    data = _retry_request(_do_request)
+
+    # Validate response structure
+    try:
+        return data["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError, TypeError) as exc:
+        raise ValueError(f"Unexpected LLM response structure: {exc}") from exc
 
 
 # ── Pipeline entry point ─────────────────────────────────────────────────────

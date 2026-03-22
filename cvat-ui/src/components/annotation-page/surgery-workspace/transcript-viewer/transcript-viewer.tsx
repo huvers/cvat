@@ -92,13 +92,20 @@ export default function TranscriptViewer(props: TranscriptViewerProps): JSX.Elem
     // Default to 60fps (surgical video standard: 50fps recorded, upsampled to 60fps)
     const fps = 60;
 
-    // Load transcripts and poll while any are pending/processing
+    // Load transcripts and poll while any are pending/processing.
+    // Pause polling when the user is editing a transcript to avoid overwriting.
     useEffect(() => {
         if (!job) return undefined;
         let cancelled = false;
         let timer: ReturnType<typeof setTimeout> | null = null;
 
         const fetchTranscripts = (): void => {
+            if (editingId !== null) {
+                // Defer polling while editing — check again after the interval
+                timer = setTimeout(fetchTranscripts, POLL_INTERVAL_MS);
+                return;
+            }
+
             serverProxy.jobs
                 .getTranscripts(job.id)
                 .then((data) => {
@@ -131,7 +138,7 @@ export default function TranscriptViewer(props: TranscriptViewerProps): JSX.Elem
             cancelled = true;
             if (timer) clearTimeout(timer);
         };
-    }, [job?.id, refreshKey]);
+    }, [job?.id, refreshKey, editingId]);
 
     const startEditing = useCallback((t: SerializedJobTranscript) => {
         setEditingId(t.id);
