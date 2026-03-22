@@ -84,13 +84,14 @@ ____
 
 ## P1 checklist (scale to 20–50 surgeons)
 
-- [ ] Ontology versioning + audit trail for label schema changes
+- [x] Ontology versioning + audit trail for label schema changes
   - Leading Platform: Ontology edit history with user/time versioning and revert support; soft deletion/archive semantics.
   - CVAT Community gap: Labels can be edited, but there’s no first-class ontology version history or migrations.
   - Build notes:
     - Implement a “Procedure Ontology Registry” with immutable versions and migration scripts.
     - Allow projects/tasks to pin to a version; add diff UI and deprecate/alias semantics.
     - Store ontology edits as events for traceability.
+  - Status: `OntologyVersion` model (immutable JSON snapshot of project labels + attributes + sublabels, version number, created_by, description) with migration 0105. `pinned_ontology_version` FK on Project. Auto-snapshot via post_save/post_delete signals on Label and AttributeSpec. `ontology.py`: snapshot serialization, version creation, and structured diff computation (added/removed/renamed labels + attribute changes). API: `GET/POST /api/ontology-versions`, `GET /api/ontology-versions/{id}`, `GET /api/ontology-versions/diff?v1=X&v2=Y`. UI: `/ontology` page with version history cards, label chips, and diff viewer.
 
 - [ ] Dataset-first project model (attach new data units over time)
   - Leading Platform: Projects label data from datasets attached to the project.

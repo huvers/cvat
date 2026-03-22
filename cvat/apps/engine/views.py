@@ -840,6 +840,69 @@ class _JobDataGetter(_DataGetter):
         })
 )
 
+class OntologyVersionViewSet(viewsets.ViewSet):
+    """Ontology version history for projects."""
+
+    @extend_schema(
+        summary='List ontology versions for a project',
+        parameters=[OpenApiParameter('project_id', type=int, required=True)],
+    )
+    def list(self, request):
+        project_id = request.query_params.get('project_id')
+        if not project_id:
+            return Response({'detail': 'project_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        qs = models.OntologyVersion.objects.filter(
+            project_id=int(project_id),
+        ).select_related("created_by").order_by("-version")
+        from cvat.apps.engine.serializers import OntologyVersionSerializer
+        return Response(OntologyVersionSerializer(qs, many=True).data)
+
+    @extend_schema(summary='Create a manual ontology snapshot')
+    def create(self, request):
+        project_id = request.data.get('project_id')
+        description = request.data.get('description', '')
+        if not project_id:
+            return Response({'detail': 'project_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            project = models.Project.objects.get(id=project_id)
+        except models.Project.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        from cvat.apps.engine.ontology import create_ontology_version
+        from cvat.apps.engine.serializers import OntologyVersionSerializer
+        version = create_ontology_version(project, description=description, created_by=request.user)
+        return Response(OntologyVersionSerializer(version).data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(summary='Get a specific ontology version')
+    def retrieve(self, request, pk=None):
+        try:
+            version = models.OntologyVersion.objects.select_related("created_by").get(id=pk)
+        except models.OntologyVersion.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        from cvat.apps.engine.serializers import OntologyVersionSerializer
+        return Response(OntologyVersionSerializer(version).data)
+
+    @extend_schema(
+        summary='Compare two ontology versions',
+        parameters=[
+            OpenApiParameter('v1', type=int, required=True),
+            OpenApiParameter('v2', type=int, required=True),
+        ],
+    )
+    @action(detail=False, methods=['GET'], url_path='diff')
+    def diff(self, request):
+        v1_id = request.query_params.get('v1')
+        v2_id = request.query_params.get('v2')
+        if not v1_id or not v2_id:
+            return Response({'detail': 'v1 and v2 are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            v1 = models.OntologyVersion.objects.get(id=v1_id)
+            v2 = models.OntologyVersion.objects.get(id=v2_id)
+        except models.OntologyVersion.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        from cvat.apps.engine.ontology import compute_diff
+        return Response(compute_diff(v1.schema, v2.schema))
+
+
 class TaskViewSet(viewsets.GenericViewSet, mixins.ListModelMixin,
     mixins.RetrieveModelMixin, mixins.CreateModelMixin, mixins.DestroyModelMixin,
     PartialUpdateModelMixin, UploadMixin, DatasetMixin, BackupMixin

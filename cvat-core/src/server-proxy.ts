@@ -2758,6 +2758,28 @@ export default Object.freeze({
     surgery: Object.freeze({
         triggerBulkIngest,
         getQAMetrics: getSurgeryQA,
+        getOntologyVersions: async (projectId: number): Promise<any[]> => {
+            const { backendAPI } = config;
+            try {
+                const response = await Axios.get(`${backendAPI}/ontology-versions`, {
+                    params: { project_id: projectId, ...enableOrganization() },
+                });
+                return response.data;
+            } catch (errorData) {
+                throw generateError(errorData);
+            }
+        },
+        getOntologyDiff: async (v1Id: number, v2Id: number): Promise<Record<string, any>> => {
+            const { backendAPI } = config;
+            try {
+                const response = await Axios.get(`${backendAPI}/ontology-versions/diff`, {
+                    params: { v1: v1Id, v2: v2Id, ...enableOrganization() },
+                });
+                return response.data;
+            } catch (errorData) {
+                throw generateError(errorData);
+            }
+        },
     }),
 
     users: Object.freeze({
