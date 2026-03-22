@@ -11,6 +11,8 @@ import User from './user';
 import { ArgumentError } from './exceptions';
 import serverProxy from './server-proxy';
 
+export type IssueType = 'frame' | 'interval' | 'narration';
+
 interface RawIssueData {
     job: number;
     position: number[];
@@ -20,12 +22,18 @@ interface RawIssueData {
     owner?: any;
     resolved?: boolean;
     created_date?: string;
+    end_frame?: number | null;
+    issue_type?: IssueType;
+    narration?: number | null;
 }
 
 export default class Issue {
     public readonly id?: number;
     public readonly job: number;
     public readonly frame: number;
+    public readonly endFrame?: number | null;
+    public readonly issueType?: IssueType;
+    public readonly narration?: number | null;
     public readonly owner?: User;
     public readonly comments: Comment[];
     public readonly resolved?: boolean;
@@ -43,6 +51,9 @@ export default class Issue {
             owner: undefined,
             resolved: undefined,
             comments: undefined,
+            end_frame: undefined,
+            issue_type: undefined,
+            narration: undefined,
         };
 
         for (const property in data) {
@@ -95,6 +106,15 @@ export default class Issue {
                 },
                 resolved: {
                     get: () => data.resolved,
+                },
+                endFrame: {
+                    get: () => data.end_frame,
+                },
+                issueType: {
+                    get: () => data.issue_type,
+                },
+                narration: {
+                    get: () => data.narration,
                 },
                 __internal: {
                     get: () => data,
@@ -163,6 +183,15 @@ export default class Issue {
         }
         if (this.owner instanceof User) {
             data.owner = this.owner.serialize().id;
+        }
+        if (typeof this.endFrame === 'number') {
+            data.end_frame = this.endFrame;
+        }
+        if (typeof this.issueType === 'string') {
+            data.issue_type = this.issueType;
+        }
+        if (typeof this.narration === 'number') {
+            data.narration = this.narration;
         }
 
         return data;

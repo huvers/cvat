@@ -121,12 +121,13 @@ ____
     - Implement orchestration above CVAT jobs: configurable stage graph, routing policies, reassignment rules, send-back loops.
     - Map down to CVAT job stage/status while keeping richer workflow state in the fork.
 
-- [ ] Interval-aware issue tracking (pin/frame/range issues)
+- [x] Interval-aware issue tracking (pin/frame/range issues)
   - Leading Platform: Multiple issue types; supports frame range issues for multi-frame data (with some constraints).
   - CVAT Community gap: Issues exist, but the surgeon workflow needs time-range disputes (phase boundary wrong, narration mismatch at t=…).
   - Build notes:
     - Extend issues to attach to annotation object, frame, time range, narration segment, and ontology item.
     - Add assignment/resolution workflows and expose via API for triage dashboards.
+  - Status: Extended Issue model with `end_frame` (nullable), `issue_type` (frame/interval/narration), and `narration` FK. Migration 0104. Serializers updated with validation (interval requires end_frame, narration requires narration FK). ViewSet filterable by issue_type. `SurgeryIssues` component in sidebar Issues tab: create issues by type with frame range inputs, resolve inline, color-coded by type. cvat-core `Issue` class extended with endFrame, issueType, narration properties + serialization.
 
 - [ ] Video quality + label quality metrics tailored to long videos
   - Leading Platform: Video-specific quality/validation metrics and “video health” style views.

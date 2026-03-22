@@ -1608,6 +1608,18 @@ class Issue(TimestampedModel, AssignableModel):
         on_delete=models.SET_NULL)
     resolved = models.BooleanField(default=False)
 
+    # Surgery extensions for interval-aware issues
+    end_frame = models.PositiveIntegerField(null=True, blank=True)
+    issue_type = models.CharField(
+        max_length=16,
+        choices=[('frame', 'Frame'), ('interval', 'Interval'), ('narration', 'Narration')],
+        default='frame',
+    )
+    narration = models.ForeignKey(
+        'JobNarration', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='issues', related_query_name='issue',
+    )
+
     def get_project_id(self):
         return self.job.get_project_id()
 

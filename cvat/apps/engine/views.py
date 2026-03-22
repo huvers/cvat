@@ -2341,8 +2341,8 @@ class IssueViewSet(viewsets.GenericViewSet, mixins.ListModelMixin,
     iam_organization_field = 'job__segment__task__organization'
     iam_permission_class = IssuePermission
     search_fields = ('owner', 'assignee')
-    filter_fields = list(search_fields) + ['id', 'job_id', 'task_id', 'resolved', 'frame_id']
-    simple_filters = list(search_fields) + ['job_id', 'task_id', 'resolved', 'frame_id']
+    filter_fields = list(search_fields) + ['id', 'job_id', 'task_id', 'resolved', 'frame_id', 'issue_type']
+    simple_filters = list(search_fields) + ['job_id', 'task_id', 'resolved', 'frame_id', 'issue_type']
     ordering_fields = list(filter_fields)
     lookup_fields = {
         'owner': 'owner__username',
@@ -2350,6 +2350,7 @@ class IssueViewSet(viewsets.GenericViewSet, mixins.ListModelMixin,
         'job_id': 'job',
         'task_id': 'job__segment__task__id',
         'frame_id': 'frame',
+        'issue_type': 'issue_type',
     }
     ordering = '-id'
 
