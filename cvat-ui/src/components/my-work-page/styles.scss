@@ -1,0 +1,89 @@
+// Copyright (C) CVAT.ai Corporation
+//
+// SPDX-License-Identifier: MIT
+
+.cvat-my-work-page {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.cvat-my-work-header {
+    margin-bottom: 24px;
+
+    h2 {
+        margin-bottom: 4px;
+    }
+}
+
+.cvat-my-work-subtitle {
+    color: #888;
+    font-size: 13px;
+}
+
+.cvat-my-work-spinner {
+    display: flex;
+    justify-content: center;
+    padding: 48px 0;
+}
+
+.cvat-my-work-empty {
+    padding: 48px 0;
+}
+
+.cvat-my-work-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cvat-my-work-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
+    transition: box-shadow 0.15s;
+
+    &:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+}
+
+.cvat-my-work-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.cvat-my-work-card-title {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.cvat-my-work-card-task {
+    color: #555;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cvat-my-work-card-tags {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+
+    .ant-tag {
+        margin: 0;
+    }
+}
+
+.cvat-my-work-card-open {
+    flex-shrink: 0;
+    margin-left: 16px;
+}
