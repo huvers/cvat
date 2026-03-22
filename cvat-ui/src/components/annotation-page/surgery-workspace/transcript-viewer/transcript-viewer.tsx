@@ -74,7 +74,12 @@ function WordTimestampBar(props: {
     );
 }
 
-export default function TranscriptViewer(): JSX.Element {
+interface TranscriptViewerProps {
+    refreshKey?: number;
+}
+
+export default function TranscriptViewer(props: TranscriptViewerProps): JSX.Element {
+    const { refreshKey } = props;
     const job = useSelector((state: CombinedState) => state.annotation.job.instance) as Job | null | undefined;
 
     const [transcripts, setTranscripts] = useState<SerializedJobTranscript[]>([]);
@@ -126,7 +131,7 @@ export default function TranscriptViewer(): JSX.Element {
             cancelled = true;
             if (timer) clearTimeout(timer);
         };
-    }, [job?.id]);
+    }, [job?.id, refreshKey]);
 
     const startEditing = useCallback((t: SerializedJobTranscript) => {
         setEditingId(t.id);

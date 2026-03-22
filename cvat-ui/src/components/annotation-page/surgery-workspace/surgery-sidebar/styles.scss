@@ -1,12 +1,16 @@
 .cvat-surgery-sidebar {
     background: #fff;
     border-left: 1px solid #f0f0f0;
+    display: flex;
+    flex-direction: column;
 
     .cvat-surgery-sidebar-tabs {
-        height: 100%;
+        flex: 1;
+        overflow: hidden;
 
         .ant-tabs-content-holder {
             padding: 12px;
+            overflow-y: auto;
         }
     }
 
@@ -15,3 +19,14 @@
     }
 }
 
+.cvat-surgery-sidebar-footer {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid #f0f0f0;
+    flex-shrink: 0;
+
+    > .ant-btn {
+        flex: 1;
+    }
+}

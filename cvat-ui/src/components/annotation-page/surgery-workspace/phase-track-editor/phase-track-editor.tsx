@@ -118,6 +118,35 @@ export default function PhaseTrackEditor(): JSX.Element {
         }
     }, [job]);
 
+    const updateInterval = useCallback(async (
+        interval: SerializedInterval,
+        newFrame: number,
+        newEndFrame: number,
+    ) => {
+        if (!job || newEndFrame < newFrame) return;
+        setSaving(true);
+        try {
+            const updated = { ...interval, frame: newFrame, end_frame: newEndFrame };
+            await serverProxy.annotations.updateAnnotations(
+                'job',
+                job.id,
+                {
+                    version: 0,
+                    tags: [],
+                    shapes: [],
+                    tracks: [],
+                    intervals: [updated],
+                },
+                'update',
+            );
+            setIntervals((prev) => prev.map((i) => (i.id === interval.id ? updated : i)));
+        } catch (err: unknown) {
+            notification.error({ message: 'Failed to update interval', description: String(err) });
+        } finally {
+            setSaving(false);
+        }
+    }, [job]);
+
     const labelMap = Object.fromEntries(labels.map((l) => [l.id, l]));
     const canCreate = !saving && selectedLabelId !== null && startFrame !== null && endFrame !== null;
 
@@ -245,11 +274,29 @@ export default function PhaseTrackEditor(): JSX.Element {
                                     <span className='cvat-phase-track-list-name'>
                                         {label?.name ?? 'Unknown'}
                                     </span>
-                                    <span className='cvat-phase-track-list-frames'>
-                                        {interval.frame}
-                                        {' – '}
-                                        {interval.end_frame}
-                                    </span>
+                                    <InputNumber
+                                        className='cvat-phase-track-inline-input'
+                                        size='small'
+                                        min={jobStartFrame}
+                                        max={interval.end_frame}
+                                        value={interval.frame}
+                                        disabled={saving}
+                                        onChange={(v) => {
+                                            if (v !== null) updateInterval(interval, v as number, interval.end_frame);
+                                        }}
+                                    />
+                                    <span className='cvat-phase-track-list-sep'>–</span>
+                                    <InputNumber
+                                        className='cvat-phase-track-inline-input'
+                                        size='small'
+                                        min={interval.frame}
+                                        max={stopFrame}
+                                        value={interval.end_frame}
+                                        disabled={saving}
+                                        onChange={(v) => {
+                                            if (v !== null) updateInterval(interval, interval.frame, v as number);
+                                        }}
+                                    />
                                     <Button
                                         size='small'
                                         danger

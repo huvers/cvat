@@ -13,7 +13,12 @@ import { CombinedState } from 'reducers';
 
 type RecorderStatus = 'idle' | 'recording' | 'recorded' | 'uploading';
 
-export default function NarrationRecorder(): JSX.Element {
+interface Props {
+    onUploadSuccess?: () => void;
+}
+
+export default function NarrationRecorder(props: Props): JSX.Element {
+    const { onUploadSuccess } = props;
     const job = useSelector((state: CombinedState) => state.annotation.job.instance);
     const frameNumber = useSelector((state: CombinedState) => state.annotation.player.frame.number);
 
@@ -139,6 +144,7 @@ export default function NarrationRecorder(): JSX.Element {
 
             notification.success({ message: 'Narration uploaded' });
             setStatus('recorded');
+            onUploadSuccess?.();
         } catch (error: unknown) {
             notification.error({
                 message: 'Could not upload narration',
