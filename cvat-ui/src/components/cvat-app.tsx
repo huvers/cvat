@@ -38,6 +38,7 @@ import DatasetsPageComponent from 'components/datasets-page/datasets-page';
 import OntologyVersionsPageComponent from 'components/ontology-versions-page/ontology-versions-page';
 import SurgeryQAPageComponent from 'components/surgery-qa-page/surgery-qa-page';
 import MyWorkPageComponent from 'components/my-work-page/my-work-page';
+import ProfileSetupComponent from 'components/profile-setup/profile-setup';
 import ModelsPageComponent from 'components/models-page/models-page';
 
 import TasksPageContainer from 'containers/tasks-page/tasks-page';
@@ -545,6 +546,7 @@ class CVATApplication extends React.PureComponent<CVATAppProps & RouteComponentP
                                         <Route exact path='/tasks/:tid/jobs/:jid' component={AnnotationPageContainer} />
                                         <Route exact path='/tasks/:tid/jobs/:jid/analytics' component={AnalyticsReportPage} />
                                         <Route exact path='/my-work' component={MyWorkPageComponent} />
+                                        <Route exact path='/profile-setup' component={ProfileSetupComponent} />
                                         <Route exact path='/bulk-ingest' component={BulkIngestPageComponent} />
                                         <Route exact path='/surgery-qa' component={SurgeryQAPageComponent} />
                                         <Route exact path='/ontology' component={OntologyVersionsPageComponent} />
@@ -584,7 +586,7 @@ class CVATApplication extends React.PureComponent<CVATAppProps & RouteComponentP
                                         <Redirect
                                             push
                                             to={{
-                                                pathname: queryParams.get('next') ?? '/tasks',
+                                                pathname: queryParams.get('next') ?? '/my-work',
                                                 search: authParams ? new URLSearchParams(authParams).toString() : '',
                                             }}
                                         />

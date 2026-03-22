@@ -1683,6 +1683,20 @@ class TrackedShapeAttributeVal(AttributeVal):
         related_name='attributes', related_query_name='attribute')
 
 
+class UserRole(str, models.Choices):
+    SURGEON = 'surgeon'
+    ENGINEER = 'engineer'
+    RESEARCHER = 'researcher'
+    REVIEWER = 'reviewer'
+
+
+class ExpertiseLevel(str, models.Choices):
+    RESIDENT = 'resident'
+    FELLOW = 'fellow'
+    ATTENDING = 'attending'
+    EXPERT = 'expert'
+
+
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     rating = models.FloatField(default=0.0)
@@ -1692,6 +1706,17 @@ class Profile(models.Model):
         default=False,
         help_text=_("Designates whether the user can access analytics."),
     )
+
+    # Surgery-specific profile fields
+    role = models.CharField(
+        max_length=16, choices=UserRole.choices, blank=True, default='',
+    )
+    expertise_level = models.CharField(
+        max_length=16, choices=ExpertiseLevel.choices, blank=True, default='',
+    )
+    specialty = models.CharField(max_length=128, blank=True, default='')
+    institution = models.CharField(max_length=256, blank=True, default='')
+    profile_complete = models.BooleanField(default=False)
 
 
 class Issue(TimestampedModel, AssignableModel):
