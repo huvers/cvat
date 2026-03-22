@@ -462,6 +462,18 @@ function HeaderComponent(props: Props): JSX.Element {
                     Cloud Storages
                 </Button>
                 <Button
+                    className={getButtonClassName('bulk-ingest')}
+                    type='link'
+                    value='bulk-ingest'
+                    href='/bulk-ingest'
+                    onClick={(event: React.MouseEvent): void => {
+                        event.preventDefault();
+                        history.push('/bulk-ingest');
+                    }}
+                >
+                    Ingest
+                </Button>
+                <Button
                     className={getButtonClassName('requests')}
                     type='link'
                     value='requests'

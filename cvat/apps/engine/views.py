@@ -3198,3 +3198,52 @@ class SurgeryModelViewSet(viewsets.ModelViewSet):
         qs = self.queryset.filter(procedure_type=procedure_type, is_active=True)
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
+
+
+class BulkIngestViewSet(viewsets.ViewSet):
+    """Bulk ingest episodes from S3 cloud storage in LeRobot format."""
+
+    @extend_schema(
+        summary='Start bulk ingest from S3',
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'cloud_storage_id': {'type': 'integer'},
+                    'procedure_prefix': {'type': 'string'},
+                    'project_id': {'type': 'integer', 'nullable': True},
+                    'trigger_weak_labeling': {'type': 'boolean', 'default': False},
+                },
+                'required': ['cloud_storage_id', 'procedure_prefix'],
+            }
+        },
+        responses={'202': None},
+    )
+    def create(self, request):
+        cloud_storage_id = request.data.get('cloud_storage_id')
+        procedure_prefix = request.data.get('procedure_prefix')
+        project_id = request.data.get('project_id')
+        trigger_weak_labeling = request.data.get('trigger_weak_labeling', False)
+
+        if not cloud_storage_id or not procedure_prefix:
+            return Response(
+                {'detail': 'cloud_storage_id and procedure_prefix are required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        import django_rq
+        queue = django_rq.get_queue(settings.CVAT_QUEUES.IMPORT_DATA.value)
+        queue.enqueue(
+            'cvat.apps.engine.bulk_ingest.run_bulk_ingest',
+            cloud_storage_id=cloud_storage_id,
+            procedure_prefix=procedure_prefix,
+            project_id=project_id,
+            owner_id=request.user.id,
+            trigger_weak_labeling=trigger_weak_labeling,
+            job_timeout=1800,
+        )
+
+        return Response(
+            {'detail': f'Bulk ingest queued for prefix: {procedure_prefix}'},
+            status=status.HTTP_202_ACCEPTED,
+        )

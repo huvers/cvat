@@ -99,12 +99,13 @@ ____
     - Add a “Dataset” entity (or a high-level abstraction over tasks) to support continuous ingestion while keeping ontology/workflow consistent.
     - Provide “attach dataset” operations and a stable case ID so narration/labels link across derived clips.
 
-- [ ] Bulk ingest from cloud storage folders + auto-task creation at scale
+- [x] Bulk ingest from cloud storage folders + auto-task creation at scale
   - Leading Platform: Cloud integrations + metadata-driven import; signed URLs can be used without storing them.
   - CVAT Community gap: Cloud storage attachment exists, but multi-task creation can’t upload multiple tasks from cloud storage.
   - Build notes:
     - Build a server-side ingestion service: scan prefixes, validate codecs, generate manifests, create tasks/jobs.
     - Add “procedure templating” (ontology + job settings) and map case → tasks automatically.
+  - Status: `bulk_ingest.py` module scans S3 for LeRobot-format episodes (`{prefix}/videos/chunk-XXX/observation.images.endoscope/episode_*.mp4`). Creates one CVAT task per episode with cloud storage attachment, auto-classifies with procedure type, optionally triggers weak labeling. `POST /api/bulk-ingest` API enqueues to RQ IMPORT_DATA queue. `BulkIngestPage` UI at `/bulk-ingest` with cloud storage ID, prefix, project, and weak labeling toggle.
 
 - [x] Webhooks aligned with workflow stages (submitted/reviewed/completed)
   - Leading Platform: Workflow-stage webhooks (e.g., at submit and completion stages).
