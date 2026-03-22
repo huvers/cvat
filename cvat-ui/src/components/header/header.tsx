@@ -402,6 +402,18 @@ function HeaderComponent(props: Props): JSX.Element {
             <div className='cvat-left-header'>
                 <CVATLogo />
                 <Button
+                    className={getButtonClassName('my-work')}
+                    type='link'
+                    value='my-work'
+                    href='/my-work'
+                    onClick={(event: React.MouseEvent): void => {
+                        event.preventDefault();
+                        history.push('/my-work');
+                    }}
+                >
+                    My Work
+                </Button>
+                <Button
                     className={getButtonClassName('projects')}
                     type='link'
                     value='projects'
