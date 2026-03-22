@@ -3,6 +3,7 @@ import Layout from 'antd/lib/layout';
 import Tabs from 'antd/lib/tabs';
 import Typography from 'antd/lib/typography';
 
+import PhaseTrackEditor from '../phase-track-editor/phase-track-editor';
 import './styles.scss';
 
 export default function SurgerySidebar(): JSX.Element {
@@ -23,11 +24,7 @@ export default function SurgerySidebar(): JSX.Element {
                     {
                         key: 'phase-track',
                         label: 'Phase track',
-                        children: (
-                            <Typography.Paragraph className='cvat-surgery-sidebar-placeholder'>
-                                Interval phase editor will live here.
-                            </Typography.Paragraph>
-                        ),
+                        children: <PhaseTrackEditor />,
                     },
                 ]}
             />

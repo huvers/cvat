@@ -482,10 +482,22 @@ export interface SerializedTag {
     attributes: { spec_id: number; value: string }[];
 }
 
+export interface SerializedInterval {
+    id?: number;
+    clientID?: number;
+    label_id: number;
+    frame: number;
+    end_frame: number;
+    group: number;
+    source: Source;
+    attributes: { spec_id: number; value: string }[];
+}
+
 export interface SerializedCollection {
     tags: SerializedTag[];
     shapes: SerializedShape[];
     tracks: SerializedTrack[];
+    intervals: SerializedInterval[];
     version: number;
 }
 

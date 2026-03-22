@@ -1,0 +1,144 @@
+// Copyright (C) CVAT.ai Corporation
+//
+// SPDX-License-Identifier: MIT
+
+.cvat-phase-track-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+// ── Creation Panel ──────────────────────────────────────────
+
+.cvat-phase-track-create {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cvat-phase-track-label-select {
+    width: 100%;
+}
+
+.cvat-phase-track-label-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.cvat-phase-track-frame-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cvat-phase-track-frame-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cvat-phase-track-frame-label {
+    width: 32px;
+    font-size: 12px;
+    color: #888;
+    flex-shrink: 0;
+}
+
+// ── Timeline ────────────────────────────────────────────────
+
+.cvat-phase-track-timeline {
+    position: relative;
+    height: 28px;
+    background: #1c1c1e;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #333;
+    flex-shrink: 0;
+}
+
+.cvat-phase-track-bar {
+    position: absolute;
+    top: 4px;
+    height: 20px;
+    border-radius: 3px;
+    opacity: 0.78;
+    min-width: 2px;
+    cursor: default;
+    transition: opacity 0.12s;
+
+    &:hover {
+        opacity: 1;
+    }
+}
+
+.cvat-phase-track-cursor {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.85);
+    pointer-events: none;
+    transform: translateX(-50%);
+}
+
+// ── List ────────────────────────────────────────────────────
+
+.cvat-phase-track-spinner {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0;
+}
+
+.cvat-phase-track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.cvat-phase-track-empty {
+    color: #888;
+    font-size: 12px;
+    text-align: center;
+    padding: 16px 0;
+    margin: 0;
+}
+
+.cvat-phase-track-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.cvat-phase-track-list-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.cvat-phase-track-list-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cvat-phase-track-list-frames {
+    color: #888;
+    font-size: 11px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
