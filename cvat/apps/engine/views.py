@@ -3439,3 +3439,36 @@ class DatasetViewSet(viewsets.ModelViewSet):
         if status_filter:
             qs = qs.filter(status=status_filter)
         return Response(DatasetEpisodeSerializer(qs, many=True).data)
+
+    @extend_schema(
+        summary='Export dataset in COCO format (for segmentation training)',
+        responses={'200': None},
+    )
+    @action(detail=True, methods=['GET'], url_path='export-coco')
+    def export_coco(self, request, pk=None):
+        from cvat.apps.engine.dataset_export import export_coco
+        dataset = self.get_object()
+        data = export_coco(dataset)
+        return Response(data)
+
+    @extend_schema(
+        summary='Export dataset in temporal format (for phase/task training)',
+        responses={'200': None},
+    )
+    @action(detail=True, methods=['GET'], url_path='export-temporal')
+    def export_temporal(self, request, pk=None):
+        from cvat.apps.engine.dataset_export import export_temporal
+        dataset = self.get_object()
+        data = export_temporal(dataset)
+        return Response(data)
+
+    @extend_schema(
+        summary='Export dataset in both COCO and temporal formats',
+        responses={'200': None},
+    )
+    @action(detail=True, methods=['GET'], url_path='export-all')
+    def export_all(self, request, pk=None):
+        from cvat.apps.engine.dataset_export import export_dataset
+        dataset = self.get_object()
+        data = export_dataset(dataset.id, fmt="both")
+        return Response(data)

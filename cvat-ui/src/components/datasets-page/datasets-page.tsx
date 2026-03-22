@@ -12,6 +12,7 @@ import Typography from 'antd/lib/typography';
 import notification from 'antd/lib/notification';
 import {
     SyncOutlined, CloudUploadOutlined, DatabaseOutlined,
+    DownloadOutlined,
 } from '@ant-design/icons';
 
 import serverProxy from 'cvat-core/src/server-proxy';
@@ -86,6 +87,24 @@ export default function DatasetsPage(): JSX.Element {
         }
     }, []);
 
+    const handleExport = useCallback(async (id: number, fmt: 'coco' | 'temporal') => {
+        try {
+            const data = fmt === 'coco'
+                ? await serverProxy.surgery.exportDatasetCoco(id)
+                : await serverProxy.surgery.exportDatasetTemporal(id);
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dataset_${id}_${fmt}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            notification.success({ message: `${fmt.toUpperCase()} export downloaded` });
+        } catch (err: unknown) {
+            notification.error({ message: 'Export failed', description: String(err) });
+        }
+    }, []);
+
     const columns = [
         {
             title: 'Name',
@@ -129,7 +148,7 @@ export default function DatasetsPage(): JSX.Element {
         {
             title: 'Actions',
             key: 'actions',
-            width: 200,
+            width: 320,
             render: (_: unknown, row: DatasetData) => (
                 <span className='cvat-dataset-actions'>
                     <Button
@@ -148,6 +167,20 @@ export default function DatasetsPage(): JSX.Element {
                         onClick={() => handleIngest(row.id)}
                     >
                         Ingest
+                    </Button>
+                    <Button
+                        size='small'
+                        icon={<DownloadOutlined />}
+                        onClick={() => handleExport(row.id, 'coco')}
+                    >
+                        COCO
+                    </Button>
+                    <Button
+                        size='small'
+                        icon={<DownloadOutlined />}
+                        onClick={() => handleExport(row.id, 'temporal')}
+                    >
+                        Temporal
                     </Button>
                 </span>
             ),
