@@ -53,13 +53,8 @@ function RightGroup(props: Props): JSX.Element {
         }
     })();
 
-    const surgeryWorkspaceEnabled = workspace === Workspace.SURGERY || isDev() || (() => {
-        try {
-            return localStorage.getItem('enableSurgeryWorkspace') === 'true';
-        } catch (error: unknown) {
-            return false;
-        }
-    })();
+    // Surgery workspace is always enabled in this fork
+    const surgeryWorkspaceEnabled = true;
 
     const openGuide = useCallback(() => {
         const PADDING = Math.min(window.screen.availHeight, window.screen.availWidth) * 0.4;

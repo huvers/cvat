@@ -142,3 +142,17 @@
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }
+
+.cvat-phase-track-inline-input {
+    width: 64px;
+
+    .ant-input-number-input {
+        font-size: 11px;
+        padding: 0 4px;
+    }
+}
+
+.cvat-phase-track-list-sep {
+    color: #888;
+    font-size: 11px;
+}
