@@ -224,13 +224,14 @@ export default function PhaseTrackEditor(): JSX.Element {
                         0.5,
                     );
                     const label = labelMap[interval.label_id];
+                    const isAuto = interval.source === 'auto' || interval.source === 'semi-auto';
                     return (
                         <Tooltip
                             key={interval.id ?? `tmp-${idx}`}
-                            title={`${label?.name ?? 'Unknown'}: ${interval.frame}–${interval.end_frame}`}
+                            title={`${label?.name ?? 'Unknown'}: ${interval.frame}–${interval.end_frame}${isAuto ? ' (model prediction)' : ''}`}
                         >
                             <div
-                                className='cvat-phase-track-bar'
+                                className={`cvat-phase-track-bar${isAuto ? ' cvat-phase-track-bar-auto' : ''}`}
                                 style={{
                                     left: `${left}%`,
                                     width: `${width}%`,
@@ -262,10 +263,11 @@ export default function PhaseTrackEditor(): JSX.Element {
                     ) : (
                         intervals.map((interval, idx) => {
                             const label = labelMap[interval.label_id];
+                            const isAuto = interval.source === 'auto' || interval.source === 'semi-auto';
                             return (
                                 <div
                                     key={interval.id ?? `tmp-${idx}`}
-                                    className='cvat-phase-track-list-item'
+                                    className={`cvat-phase-track-list-item${isAuto ? ' cvat-phase-track-list-item-auto' : ''}`}
                                 >
                                     <span
                                         className='cvat-phase-track-list-dot'

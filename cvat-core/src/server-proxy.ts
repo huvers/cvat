@@ -2715,6 +2715,16 @@ export default Object.freeze({
         getTranscripts: getJobTranscripts,
         updateTranscript: updateJobTranscript,
         getSurgeryExport,
+        triggerWeakLabeling: async (jobID: number): Promise<void> => {
+            const { backendAPI } = config;
+            try {
+                await Axios.post(`${backendAPI}/jobs/${jobID}/weak-label`, {}, {
+                    params: { ...enableOrganization() },
+                });
+            } catch (errorData) {
+                throw generateError(errorData);
+            }
+        },
     }),
 
     users: Object.freeze({
