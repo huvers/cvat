@@ -156,3 +156,14 @@
     color: #888;
     font-size: 11px;
 }
+
+// Auto (model-predicted) intervals: dashed border + lower opacity
+.cvat-phase-track-bar-auto {
+    opacity: 0.5;
+    border: 1px dashed rgba(255, 255, 255, 0.6);
+}
+
+.cvat-phase-track-list-item-auto {
+    border-left: 3px dashed #1890ff;
+    opacity: 0.85;
+}

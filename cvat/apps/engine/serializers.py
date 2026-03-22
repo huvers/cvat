@@ -3629,6 +3629,23 @@ class JobTranscriptWriteSerializer(serializers.ModelSerializer):
         fields = ("corrected_transcript",)
 
 
+class SurgeryModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.SurgeryModel
+        fields = (
+            "id",
+            "name",
+            "procedure_type",
+            "model_type",
+            "endpoint_url",
+            "is_active",
+            "config",
+            "created_date",
+            "updated_date",
+        )
+        read_only_fields = ("id", "created_date", "updated_date")
+
+
 class CommentReadSerializer(serializers.ModelSerializer):
     owner = BasicUserSerializer(allow_null=True, required=False)
 

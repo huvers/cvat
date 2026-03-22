@@ -23,6 +23,7 @@ router.register("labels", views.LabelViewSet)
 router.register("cloudstorages", views.CloudStorageViewSet)
 router.register("assets", views.AssetsViewSet)
 router.register("guides", views.AnnotationGuidesViewSet)
+router.register("surgery-models", views.SurgeryModelViewSet)
 
 urlpatterns = [
     # Entry point for a client

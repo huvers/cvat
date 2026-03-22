@@ -1086,6 +1086,34 @@ class JobTranscript(TimestampedModel):
         default_permissions = ()
 
 
+class SurgeryModelType(str, models.Choices):
+    PHASE_CLASSIFIER = 'phase_classifier'
+    TASK_CLASSIFIER = 'task_classifier'
+    ANATOMY_SEGMENTER = 'anatomy_segmenter'
+
+
+class SurgeryModel(TimestampedModel):
+    """Registry of available AI models mapped to procedure types."""
+    name = SafeCharField(max_length=128)
+    procedure_type = SafeCharField(max_length=128)
+    model_type = models.CharField(max_length=32, choices=SurgeryModelType.choices)
+    endpoint_url = models.URLField(max_length=512)
+    is_active = models.BooleanField(default=True)
+    config = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'procedure_type'],
+                name='surgery_model_unique',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.procedure_type})"
+
+
 class RelatedFile(models.Model):
     data = models.ForeignKey(
         Data, on_delete=models.CASCADE,

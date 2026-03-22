@@ -132,6 +132,7 @@ from cvat.apps.engine.serializers import (
     JobTranscriptWriteSerializer,
     JobReadSerializer,
     JobValidationLayoutReadSerializer,
+    SurgeryModelSerializer,
     JobValidationLayoutWriteSerializer,
     JobWriteSerializer,
     LabeledDataSerializer,
@@ -2064,6 +2065,23 @@ class JobViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateMo
         }
         return Response(payload)
 
+    @extend_schema(methods=['POST'], summary='Trigger weak labeling for a job',
+        responses={'202': None})
+    @action(detail=True, methods=['POST'], url_path=r'weak-label/?$',
+        serializer_class=None)
+    def weak_label(self, request: ExtendedRequest, pk: int):
+        """Enqueue weak labeling (temporal model inference) for this job."""
+        self._object: models.Job = self.get_object()
+
+        import django_rq
+        queue = django_rq.get_queue(settings.CVAT_QUEUES.AUTO_ANNOTATION.value)
+        queue.enqueue(
+            "cvat.apps.engine.weak_labeling.run_weak_labeling",
+            job_id=self._object.id,
+            job_timeout=900,
+        )
+        return Response(status=status.HTTP_202_ACCEPTED)
+
     @tus_chunk_action(detail=True, suffix_base="annotations")
     def append_annotations_chunk(self, request: ExtendedRequest, pk: int, file_id: str):
         self._object = self.get_object()
@@ -3138,3 +3156,44 @@ def rq_exception_handler(rq_job: RQJob, exc_type: type[Exception], exc_value: Ex
     rq_job_meta.save()
 
     return True
+
+
+class SurgeryModelViewSet(viewsets.ModelViewSet):
+    """CRUD for the surgery model registry (maps procedure types to AI models)."""
+    queryset = models.SurgeryModel.objects.all().order_by('procedure_type', 'name')
+    serializer_class = SurgeryModelSerializer
+
+    @extend_schema(summary='List registered surgery models')
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(summary='Register a new surgery model')
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(summary='Get a surgery model')
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(summary='Update a surgery model')
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(summary='Partially update a surgery model')
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(summary='Delete a surgery model')
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(
+        summary='List models matching a procedure type',
+        parameters=[OpenApiParameter('procedure_type', type=str, required=True)],
+    )
+    @action(detail=False, methods=['GET'], url_path='lookup')
+    def lookup(self, request):
+        procedure_type = request.query_params.get('procedure_type', '')
+        qs = self.queryset.filter(procedure_type=procedure_type, is_active=True)
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
