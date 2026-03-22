@@ -1,0 +1,31 @@
+// Copyright (C) CVAT.ai Corporation
+//
+// SPDX-License-Identifier: MIT
+
+.cvat-bulk-ingest-page {
+    display: flex;
+    justify-content: center;
+    padding: 32px;
+}
+
+.cvat-bulk-ingest-card {
+    width: 100%;
+    max-width: 600px;
+    background: #fff;
+    border-radius: 8px;
+    padding: 32px;
+    border: 1px solid #f0f0f0;
+}
+
+.cvat-bulk-ingest-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.cvat-bulk-ingest-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}

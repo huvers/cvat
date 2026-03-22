@@ -33,6 +33,7 @@ import UploadFileStatusModal from 'components/common/upload-file-status-modal';
 import SelectCSUpdatingSchemeModal from 'components/update-linked-cs-modal/select-cs-updating-scheme-modal';
 
 import JobsPageComponent from 'components/jobs-page/jobs-page';
+import BulkIngestPageComponent from 'components/bulk-ingest-page/bulk-ingest-page';
 import MyWorkPageComponent from 'components/my-work-page/my-work-page';
 import ModelsPageComponent from 'components/models-page/models-page';
 
@@ -541,6 +542,7 @@ class CVATApplication extends React.PureComponent<CVATAppProps & RouteComponentP
                                         <Route exact path='/tasks/:tid/jobs/:jid' component={AnnotationPageContainer} />
                                         <Route exact path='/tasks/:tid/jobs/:jid/analytics' component={AnalyticsReportPage} />
                                         <Route exact path='/my-work' component={MyWorkPageComponent} />
+                                        <Route exact path='/bulk-ingest' component={BulkIngestPageComponent} />
                                         <Route exact path='/jobs' component={JobsPageComponent} />
                                         <Route exact path='/cloudstorages' component={CloudStoragesPageComponent} />
                                         <Route
