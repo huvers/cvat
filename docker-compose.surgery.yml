@@ -1,0 +1,132 @@
+# Surgery platform overlay for CVAT
+# Usage: docker compose -f docker-compose.yml -f docker-compose.surgery.yml up -d
+#
+# Prerequisites:
+#   - Copy .env.surgery.example to .env and edit with your settings
+#   - Ensure GPU drivers are installed (nvidia-container-toolkit)
+#
+# This adds:
+#   - Surgery-specific env vars to all backend services
+#   - Parakeet ASR service (NeMo, GPU)
+#   - LLM service (llama-cpp-python or remote API)
+
+x-surgery-env: &surgery-env
+  # Transcription pipeline
+  TRANSCRIPTION_ASR_URL: http://parakeet:8888/asr
+  TRANSCRIPTION_LLM_URL: ${LLM_API_URL:-http://llm:8080/v1/chat/completions}
+  TRANSCRIPTION_LLM_MODEL: ${LLM_MODEL:-default}
+  # Copilot
+  COPILOT_LLM_URL: ${LLM_API_URL:-http://llm:8080/v1/chat/completions}
+  COPILOT_LLM_MODEL: ${LLM_MODEL:-default}
+
+services:
+  # ── Override CVAT backend services with surgery env vars ──
+
+  cvat_server:
+    environment:
+      <<: *surgery-env
+
+  cvat_worker_annotation:
+    environment:
+      <<: *surgery-env
+
+  cvat_worker_import:
+    environment:
+      <<: *surgery-env
+
+  cvat_worker_webhooks:
+    environment:
+      <<: *surgery-env
+
+  # ── Parakeet ASR service (NVIDIA NeMo) ──
+  # Runs Parakeet-TDT-0.6B-v2 for speech-to-text
+  # Requires NVIDIA GPU with >= 4GB VRAM
+
+  parakeet:
+    container_name: surgery_parakeet
+    image: ${PARAKEET_IMAGE:-nvcr.io/nvidia/nemo:24.12}
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      MODEL_NAME: nvidia/parakeet-tdt-0.6b-v2
+    volumes:
+      - surgery_models:/models
+    ports:
+      - "${PARAKEET_PORT:-8888}:8888"
+    networks:
+      - cvat
+    # Override entrypoint with a simple FastAPI ASR server
+    # In production, replace with your NeMo Triton deployment
+    entrypoint: >
+      bash -c "
+        pip install -q fastapi uvicorn python-multipart nemo_toolkit[asr] &&
+        python3 -c \"
+        import uvicorn
+        from fastapi import FastAPI, UploadFile
+        import nemo.collections.asr as nemo_asr
+        import tempfile, os
+
+        app = FastAPI()
+        model = None
+
+        @app.on_event('startup')
+        async def load():
+            global model
+            model = nemo_asr.models.ASRModel.from_pretrained('nvidia/parakeet-tdt-0.6b-v2')
+
+        @app.post('/asr')
+        async def transcribe(audio: UploadFile):
+            with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as f:
+                f.write(await audio.read())
+                path = f.name
+            try:
+                result = model.transcribe([path], timestamps=True)
+                text = result[0].text if hasattr(result[0], 'text') else str(result[0])
+                words = []
+                if hasattr(result[0], 'timestamp') and result[0].timestamp:
+                    for seg in result[0].timestamp.get('word', []):
+                        words.append({'word': seg['word'], 'start': seg['start'], 'end': seg['end']})
+                return {'text': text, 'words': words}
+            finally:
+                os.unlink(path)
+
+        uvicorn.run(app, host='0.0.0.0', port=8888)
+        \"
+      "
+
+  # ── LLM service (llama-cpp-python) ──
+  # Runs a local LLM with OpenAI-compatible API
+  # Set LLM_MODE=remote in .env to skip this and use an external API
+
+  llm:
+    container_name: surgery_llm
+    image: ghcr.io/abetlen/llama-cpp-python:latest
+    restart: unless-stopped
+    profiles:
+      - local-llm
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      MODEL: /models/${LLM_MODEL_FILE:-model.gguf}
+      N_GPU_LAYERS: -1
+      CHAT_FORMAT: chatml
+    volumes:
+      - surgery_models:/models
+    ports:
+      - "${LLM_PORT:-8080}:8000"
+    networks:
+      - cvat
+
+volumes:
+  surgery_models:
