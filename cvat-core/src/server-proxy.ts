@@ -1686,6 +1686,34 @@ async function getSurgeryExport(jobID: number): Promise<Record<string, any>> {
     }
 }
 
+async function triggerBulkIngest(params: {
+    cloud_storage_id: number;
+    procedure_prefix: string;
+    project_id?: number | null;
+    trigger_weak_labeling?: boolean;
+}): Promise<void> {
+    const { backendAPI } = config;
+    try {
+        await Axios.post(`${backendAPI}/bulk-ingest`, params, {
+            params: { ...enableOrganization() },
+        });
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function getSurgeryQA(projectId: number): Promise<Record<string, any>> {
+    const { backendAPI } = config;
+    try {
+        const response = await Axios.get(`${backendAPI}/surgery-qa`, {
+            params: { project_id: projectId, ...enableOrganization() },
+        });
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
 const validationLayout = (instance: 'tasks' | 'jobs') => async (
     id: number,
 ): Promise<SerializedJobValidationLayout | SerializedTaskValidationLayout> => {
@@ -2725,6 +2753,11 @@ export default Object.freeze({
                 throw generateError(errorData);
             }
         },
+    }),
+
+    surgery: Object.freeze({
+        triggerBulkIngest,
+        getQAMetrics: getSurgeryQA,
     }),
 
     users: Object.freeze({

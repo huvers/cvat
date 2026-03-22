@@ -16,7 +16,7 @@ from rest_framework.exceptions import ValidationError
 from cvat.apps.engine.cache import MediaCache
 from cvat.apps.events.handlers import handle_cache_item_create
 
-from .models import Asset, CloudStorage, Data, Job, JobNarration, JobType, Profile, Project, StatusChoice, Task
+from .models import Asset, CloudStorage, Data, Job, JobNarration, JobType, Profile, Project, StateChoice, StatusChoice, Task
 
 # TODO: need to log any problems reported by shutil.rmtree when the new
 # analytics feature is available. Now the log system can write information
@@ -42,7 +42,7 @@ def __save_job_handler(instance, created, raw: bool, **kwargs):
         db_task.save(update_fields=["status", "updated_date"])
 
     # Emit surgery-specific procedure:submitted event when a job is completed
-    if instance.state == 'completed':
+    if instance.state == StateChoice.COMPLETED:
         from cvat.apps.engine.surgery_events import emit_procedure_submitted
         emit_procedure_submitted(instance)
 

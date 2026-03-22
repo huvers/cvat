@@ -25,40 +25,52 @@ def compute_job_metrics(job: Job) -> dict:
     stop_frame = job.segment.stop_frame
     total_frames = max(stop_frame - start_frame + 1, 1)
 
-    # Interval coverage
+    # Interval coverage (using interval math, not frame sets — safe for 60fps long videos)
     intervals = list(
         LabeledInterval.objects.filter(job=job)
         .values_list("frame", "end_frame", "source")
+        .order_by("frame")
     )
     interval_count = len(intervals)
 
-    # Compute covered frames (union of all intervals)
-    covered = set()
     auto_count = 0
     manual_count = 0
-    for start, end, source in intervals:
-        covered.update(range(start, end + 1))
+    for _, _, source in intervals:
         if source in ('auto', 'semi-auto'):
             auto_count += 1
         else:
             manual_count += 1
 
-    covered_frames = len(covered.intersection(range(start_frame, stop_frame + 1)))
+    # Merge overlapping intervals to compute coverage without building frame sets
+    merged = []
+    for s, e, _ in sorted(intervals, key=lambda x: x[0]):
+        s = max(s, start_frame)
+        e = min(e, stop_frame)
+        if s > e:
+            continue
+        if merged and s <= merged[-1][1] + 1:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], e))
+        else:
+            merged.append((s, e))
+
+    covered_frames = sum(e - s + 1 for s, e in merged)
     coverage_pct = round((covered_frames / total_frames) * 100, 1)
 
     # Phase change density (intervals per 1000 frames)
     density = round((interval_count / total_frames) * 1000, 2) if total_frames > 0 else 0
 
-    # Unlabeled gaps (frame ranges not covered)
-    all_frames = set(range(start_frame, stop_frame + 1))
-    uncovered = sorted(all_frames - covered)
+    # Unlabeled gaps: count spaces between merged intervals (and edges)
     gap_count = 0
-    if uncovered:
-        # Count contiguous gaps
-        gap_count = 1
-        for i in range(1, len(uncovered)):
-            if uncovered[i] != uncovered[i - 1] + 1:
+    if not merged:
+        gap_count = 1 if total_frames > 0 else 0
+    else:
+        if merged[0][0] > start_frame:
+            gap_count += 1
+        for i in range(1, len(merged)):
+            if merged[i][0] > merged[i - 1][1] + 1:
                 gap_count += 1
+        if merged[-1][1] < stop_frame:
+            gap_count += 1
 
     # Issues
     issues_qs = Issue.objects.filter(job=job)

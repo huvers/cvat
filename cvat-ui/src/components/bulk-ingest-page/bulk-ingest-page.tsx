@@ -26,9 +26,7 @@ export default function BulkIngestPage(): JSX.Element {
         if (!cloudStorageId || !procedurePrefix.trim()) return;
         setSubmitting(true);
         try {
-            const { backendAPI } = (serverProxy as any).__internal?.config ?? {};
-            const Axios = (await import('axios')).default;
-            await Axios.post('/api/bulk-ingest', {
+            await serverProxy.surgery.triggerBulkIngest({
                 cloud_storage_id: cloudStorageId,
                 procedure_prefix: procedurePrefix.trim(),
                 project_id: projectId,
