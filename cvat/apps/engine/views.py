@@ -124,6 +124,8 @@ from cvat.apps.engine.serializers import (
     IssueReadSerializer,
     IssueWriteSerializer,
     JobDataMetaWriteSerializer,
+    JobClassificationReadSerializer,
+    JobClassificationWriteSerializer,
     JobNarrationReadSerializer,
     JobNarrationWriteSerializer,
     JobReadSerializer,
@@ -1911,6 +1913,50 @@ class JobViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateMo
         narration = serializer.save(job=self._object, owner=request.user)
         return Response(JobNarrationReadSerializer(narration).data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(methods=['GET'], summary='List classifications for a job',
+        responses={
+            '200': JobClassificationReadSerializer(many=True),
+        })
+    @extend_schema(methods=['POST'], summary='Add a classification to a job',
+        request=JobClassificationWriteSerializer,
+        responses={
+            '201': JobClassificationReadSerializer,
+        })
+    @extend_schema(methods=['DELETE'], summary='Remove a classification from a job',
+        request=JobClassificationWriteSerializer,
+        responses={
+            '204': None,
+        })
+    @action(detail=True, methods=['GET', 'POST', 'DELETE'], url_path=r'classifications/?$',
+        serializer_class=None)
+    def classifications(self, request: ExtendedRequest, pk: int):
+        self._object: models.Job = self.get_object()
+
+        if request.method == 'GET':
+            queryset = models.JobClassification.objects.filter(
+                job_id=self._object.id,
+            ).select_related("owner", "label").order_by("id")
+            serializer = JobClassificationReadSerializer(queryset, many=True)
+            return Response(serializer.data)
+
+        if request.method == 'DELETE':
+            serializer = JobClassificationWriteSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            deleted, _ = models.JobClassification.objects.filter(
+                job_id=self._object.id,
+                label_id=serializer.validated_data['label_id'],
+            ).delete()
+            if not deleted:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        serializer = JobClassificationWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        classification = serializer.save(job=self._object, owner=request.user)
+        return Response(
+            JobClassificationReadSerializer(classification).data,
+            status=status.HTTP_201_CREATED,
+        )
 
     @tus_chunk_action(detail=True, suffix_base="annotations")
     def append_annotations_chunk(self, request: ExtendedRequest, pk: int, file_id: str):

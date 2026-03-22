@@ -1,0 +1,56 @@
+// Copyright (C) CVAT.ai Corporation
+//
+// SPDX-License-Identifier: MIT
+
+.cvat-video-classification-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.cvat-video-classification-spinner {
+    display: flex;
+    justify-content: center;
+    padding: 16px 0;
+}
+
+.cvat-video-classification-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    .ant-tag {
+        margin: 0;
+        font-size: 13px;
+        padding: 3px 8px;
+    }
+}
+
+.cvat-video-classification-empty {
+    color: #888;
+    font-size: 12px;
+    text-align: center;
+    padding: 12px 0;
+    margin: 0;
+}
+
+.cvat-video-classification-add {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.cvat-video-classification-select {
+    flex: 1;
+}
+
+.cvat-video-classification-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 6px;
+    vertical-align: middle;
+}

@@ -19,7 +19,7 @@ import {
     SerializedQualitySettingsData, APIQualitySettingsFilter, SerializedQualityConflictData, APIQualityConflictsFilter,
     SerializedQualityReportData, APIQualityReportsFilter, APIAnalyticsEventsFilter, APIConsensusSettingsFilter,
     SerializedRequest, SerializedJobValidationLayout, SerializedTaskValidationLayout, SerializedConsensusSettingsData,
-    SerializedApiToken, APIApiTokensFilter, SerializedJobNarration,
+    SerializedApiToken, APIApiTokensFilter, SerializedJobNarration, SerializedJobClassification,
 } from './server-response-types';
 import { APIApiTokenModifiableFields } from './server-request-types';
 import { PaginatedResource, SerializedModel, UpdateStatusData } from './core-types';
@@ -1577,6 +1577,61 @@ async function createJobNarration(
     }
 }
 
+async function getJobClassifications(jobID: number): Promise<SerializedJobClassification[]> {
+    const { backendAPI } = config;
+
+    try {
+        const response = await Axios.get(`${backendAPI}/jobs/${jobID}/classifications`, {
+            params: {
+                ...enableOrganization(),
+            },
+        });
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function createJobClassification(
+    jobID: number,
+    labelID: number,
+): Promise<SerializedJobClassification> {
+    const { backendAPI } = config;
+
+    try {
+        const response = await Axios.post(
+            `${backendAPI}/jobs/${jobID}/classifications`,
+            { label_id: labelID },
+            {
+                params: {
+                    ...enableOrganization(),
+                },
+            },
+        );
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function deleteJobClassification(
+    jobID: number,
+    labelID: number,
+): Promise<void> {
+    const { backendAPI } = config;
+
+    try {
+        await Axios.delete(`${backendAPI}/jobs/${jobID}/classifications`, {
+            data: { label_id: labelID },
+            params: {
+                ...enableOrganization(),
+            },
+        });
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
 const validationLayout = (instance: 'tasks' | 'jobs') => async (
     id: number,
 ): Promise<SerializedJobValidationLayout | SerializedTaskValidationLayout> => {
@@ -2600,6 +2655,9 @@ export default Object.freeze({
         mergeConsensusJobs,
         getNarrations: getJobNarrations,
         createNarration: createJobNarration,
+        getClassifications: getJobClassifications,
+        createClassification: createJobClassification,
+        deleteClassification: deleteJobClassification,
     }),
 
     users: Object.freeze({

@@ -3572,6 +3572,39 @@ class JobNarrationWriteSerializer(serializers.ModelSerializer):
         )
 
 
+class JobClassificationReadSerializer(serializers.ModelSerializer):
+    owner = BasicUserSerializer(allow_null=True, required=False)
+    label_name = serializers.CharField(source='label.name', read_only=True)
+    label_color = serializers.CharField(source='label.color', read_only=True)
+
+    class Meta:
+        model = models.JobClassification
+        fields = (
+            "id",
+            "job_id",
+            "label_id",
+            "label_name",
+            "label_color",
+            "owner",
+            "created_date",
+            "updated_date",
+        )
+        read_only_fields = fields
+
+
+class JobClassificationWriteSerializer(serializers.ModelSerializer):
+    label_id = serializers.IntegerField()
+
+    def validate_label_id(self, value):
+        if not models.Label.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Label does not exist.")
+        return value
+
+    class Meta:
+        model = models.JobClassification
+        fields = ("label_id",)
+
+
 class CommentReadSerializer(serializers.ModelSerializer):
     owner = BasicUserSerializer(allow_null=True, required=False)
 
