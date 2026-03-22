@@ -44,6 +44,22 @@
     gap: 4px;
 }
 
+.cvat-transcript-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cvat-transcript-edit-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.cvat-transcript-edit-area {
+    font-size: 13px;
+    line-height: 1.6;
+}
+
 .cvat-transcript-text {
     font-size: 13px;
     line-height: 1.6;
@@ -65,4 +81,9 @@
     align-items: center;
     gap: 8px;
     padding: 8px 0;
+}
+
+.cvat-transcript-word-bar {
+    display: flex;
+    align-items: center;
 }

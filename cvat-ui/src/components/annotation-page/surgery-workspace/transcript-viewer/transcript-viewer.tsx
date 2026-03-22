@@ -2,18 +2,25 @@
 //
 // SPDX-License-Identifier: MIT
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
-import Badge from 'antd/lib/badge';
+import Button from 'antd/lib/button';
 import Collapse from 'antd/lib/collapse';
+import Input from 'antd/lib/input';
 import Spin from 'antd/lib/spin';
 import Tag from 'antd/lib/tag';
+import Tooltip from 'antd/lib/tooltip';
 import Typography from 'antd/lib/typography';
 import notification from 'antd/lib/notification';
-import { SyncOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import {
+    SyncOutlined, CheckCircleOutlined, CloseCircleOutlined,
+    ClockCircleOutlined, EditOutlined, SaveOutlined, CloseOutlined,
+    FieldTimeOutlined,
+} from '@ant-design/icons';
 
 import { Job } from 'cvat-core-wrapper';
 import { CombinedState } from 'reducers';
+import { Source } from 'cvat-core/src/enums';
 import serverProxy from 'cvat-core/src/server-proxy';
 import { SerializedJobTranscript, TranscriptStatus } from 'cvat-core/src/server-response-types';
 
@@ -28,11 +35,57 @@ const STATUS_CONFIG: Record<TranscriptStatus, { color: string; icon: JSX.Element
 
 const POLL_INTERVAL_MS = 5000;
 
+function WordTimestampBar(props: {
+    transcript: SerializedJobTranscript;
+    jobStartFrame: number;
+    fps: number;
+}): JSX.Element | null {
+    const { transcript, jobStartFrame, fps } = props;
+
+    const words = transcript.word_timestamps;
+    if (!words || words.length === 0) return null;
+
+    const handleCreateInterval = useCallback((): void => {
+        if (words.length === 0) return;
+        const startSec = words[0].start;
+        const endSec = words[words.length - 1].end;
+        const startFrame = jobStartFrame + Math.round(startSec * fps);
+        const endFrame = jobStartFrame + Math.round(endSec * fps);
+
+        notification.info({
+            message: 'Create interval from transcript',
+            description: `Frames ${startFrame}–${endFrame} (${words.length} words, ${startSec.toFixed(1)}s–${endSec.toFixed(1)}s). Use the Phase track tab to create an interval with these frame bounds.`,
+            duration: 8,
+        });
+    }, [words, jobStartFrame, fps]);
+
+    return (
+        <div className='cvat-transcript-word-bar'>
+            <Tooltip title='Suggest interval from word timestamps'>
+                <Button
+                    size='small'
+                    icon={<FieldTimeOutlined />}
+                    onClick={handleCreateInterval}
+                >
+                    {`${words.length} words · ${words[0]?.start.toFixed(1)}s–${words[words.length - 1]?.end.toFixed(1)}s`}
+                </Button>
+            </Tooltip>
+        </div>
+    );
+}
+
 export default function TranscriptViewer(): JSX.Element {
     const job = useSelector((state: CombinedState) => state.annotation.job.instance) as Job | null | undefined;
 
     const [transcripts, setTranscripts] = useState<SerializedJobTranscript[]>([]);
     const [loading, setLoading] = useState(false);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editText, setEditText] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    const jobStartFrame = job?.startFrame ?? 0;
+    // Estimate FPS from job metadata (default 30)
+    const fps = 30;
 
     // Load transcripts and poll while any are pending/processing
     useEffect(() => {
@@ -75,6 +128,32 @@ export default function TranscriptViewer(): JSX.Element {
         };
     }, [job?.id]);
 
+    const startEditing = useCallback((t: SerializedJobTranscript) => {
+        setEditingId(t.id);
+        setEditText(t.corrected_transcript);
+    }, []);
+
+    const cancelEditing = useCallback(() => {
+        setEditingId(null);
+        setEditText('');
+    }, []);
+
+    const saveEditing = useCallback(async () => {
+        if (!job || editingId === null) return;
+        setSaving(true);
+        try {
+            const updated = await serverProxy.jobs.updateTranscript(job.id, editingId, editText);
+            setTranscripts((prev) => prev.map((t) => (t.id === editingId ? updated : t)));
+            setEditingId(null);
+            setEditText('');
+            notification.success({ message: 'Transcript saved' });
+        } catch (err: unknown) {
+            notification.error({ message: 'Failed to save transcript', description: String(err) });
+        } finally {
+            setSaving(false);
+        }
+    }, [job, editingId, editText]);
+
     if (loading && transcripts.length === 0) {
         return (
             <div className='cvat-transcript-spinner'>
@@ -86,7 +165,7 @@ export default function TranscriptViewer(): JSX.Element {
     if (transcripts.length === 0) {
         return (
             <Typography.Paragraph className='cvat-transcript-empty'>
-                No transcripts yet. Record and upload a narration to start the transcription pipeline.
+                No transcripts yet. Record and upload a narration above to start the transcription pipeline.
             </Typography.Paragraph>
         );
     }
@@ -98,6 +177,7 @@ export default function TranscriptViewer(): JSX.Element {
                 defaultActiveKey={transcripts[0]?.id}
                 items={transcripts.map((t) => {
                     const cfg = STATUS_CONFIG[t.status];
+                    const isEditing = editingId === t.id;
                     return {
                         key: t.id,
                         label: (
@@ -111,11 +191,56 @@ export default function TranscriptViewer(): JSX.Element {
                                 {t.status === 'completed' && (
                                     <>
                                         <div className='cvat-transcript-section'>
-                                            <Typography.Text strong>Corrected transcript</Typography.Text>
-                                            <Typography.Paragraph className='cvat-transcript-text'>
-                                                {t.corrected_transcript}
-                                            </Typography.Paragraph>
+                                            <div className='cvat-transcript-section-header'>
+                                                <Typography.Text strong>Corrected transcript</Typography.Text>
+                                                {!isEditing ? (
+                                                    <Button
+                                                        size='small'
+                                                        icon={<EditOutlined />}
+                                                        onClick={() => startEditing(t)}
+                                                    >
+                                                        Edit
+                                                    </Button>
+                                                ) : (
+                                                    <span className='cvat-transcript-edit-actions'>
+                                                        <Button
+                                                            size='small'
+                                                            type='primary'
+                                                            icon={<SaveOutlined />}
+                                                            loading={saving}
+                                                            onClick={saveEditing}
+                                                        >
+                                                            Save
+                                                        </Button>
+                                                        <Button
+                                                            size='small'
+                                                            icon={<CloseOutlined />}
+                                                            disabled={saving}
+                                                            onClick={cancelEditing}
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {isEditing ? (
+                                                <Input.TextArea
+                                                    className='cvat-transcript-edit-area'
+                                                    value={editText}
+                                                    onChange={(e) => setEditText(e.target.value)}
+                                                    autoSize={{ minRows: 3, maxRows: 12 }}
+                                                />
+                                            ) : (
+                                                <Typography.Paragraph className='cvat-transcript-text'>
+                                                    {t.corrected_transcript}
+                                                </Typography.Paragraph>
+                                            )}
                                         </div>
+                                        <WordTimestampBar
+                                            transcript={t}
+                                            jobStartFrame={jobStartFrame}
+                                            fps={fps}
+                                        />
                                         <Collapse
                                             size='small'
                                             items={[{

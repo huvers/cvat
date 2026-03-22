@@ -3623,6 +3623,12 @@ class JobTranscriptReadSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class JobTranscriptWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.JobTranscript
+        fields = ("corrected_transcript",)
+
+
 class CommentReadSerializer(serializers.ModelSerializer):
     owner = BasicUserSerializer(allow_null=True, required=False)
 

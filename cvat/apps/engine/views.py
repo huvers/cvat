@@ -129,6 +129,7 @@ from cvat.apps.engine.serializers import (
     JobNarrationReadSerializer,
     JobNarrationWriteSerializer,
     JobTranscriptReadSerializer,
+    JobTranscriptWriteSerializer,
     JobReadSerializer,
     JobValidationLayoutReadSerializer,
     JobValidationLayoutWriteSerializer,
@@ -1963,15 +1964,105 @@ class JobViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateMo
         responses={
             '200': JobTranscriptReadSerializer(many=True),
         })
-    @action(detail=True, methods=['GET'], url_path=r'transcripts/?$',
+    @extend_schema(methods=['PATCH'], summary='Update a transcript',
+        request=JobTranscriptWriteSerializer,
+        responses={
+            '200': JobTranscriptReadSerializer,
+        })
+    @action(detail=True, methods=['GET', 'PATCH'], url_path=r'transcripts/?$',
         serializer_class=None)
     def transcripts(self, request: ExtendedRequest, pk: int):
         self._object: models.Job = self.get_object()
+
+        if request.method == 'PATCH':
+            transcript_id = request.data.get('id')
+            if not transcript_id:
+                return Response(
+                    {"detail": "Field 'id' is required for PATCH."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                transcript = models.JobTranscript.objects.get(
+                    id=transcript_id,
+                    narration__job_id=self._object.id,
+                )
+            except models.JobTranscript.DoesNotExist:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            serializer = JobTranscriptWriteSerializer(
+                transcript, data=request.data, partial=True,
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(JobTranscriptReadSerializer(transcript).data)
+
         queryset = models.JobTranscript.objects.filter(
             narration__job_id=self._object.id,
         ).order_by('-created_date')
         serializer = JobTranscriptReadSerializer(queryset, many=True)
         return Response(serializer.data)
+
+    @extend_schema(methods=['GET'], summary='Export surgery annotations as JSON',
+        responses={
+            '200': None,
+        })
+    @action(detail=True, methods=['GET'], url_path=r'surgery-export/?$',
+        serializer_class=None)
+    def surgery_export(self, request: ExtendedRequest, pk: int):
+        """Export all surgery-specific data for a job as a single JSON payload."""
+        from cvat.apps.engine.serializers import (
+            JobClassificationReadSerializer,
+            JobNarrationReadSerializer,
+        )
+
+        self._object: models.Job = self.get_object()
+        job = self._object
+
+        # Intervals (from annotations)
+        intervals = list(
+            models.LabeledInterval.objects.filter(job_id=job.id)
+            .select_related("label")
+            .order_by("frame")
+            .values("id", "frame", "end_frame", "label__name", "label__color", "source")
+        )
+
+        # Classifications
+        classifications_qs = models.JobClassification.objects.filter(
+            job_id=job.id,
+        ).select_related("owner", "label").order_by("id")
+        classifications = JobClassificationReadSerializer(classifications_qs, many=True).data
+
+        # Narrations + transcripts
+        narrations_qs = models.JobNarration.objects.filter(
+            job_id=job.id,
+        ).select_related("owner").order_by("id")
+        narrations = JobNarrationReadSerializer(narrations_qs, many=True).data
+
+        transcripts_qs = models.JobTranscript.objects.filter(
+            narration__job_id=job.id,
+        ).order_by("-created_date")
+        transcripts = JobTranscriptReadSerializer(transcripts_qs, many=True).data
+
+        payload = {
+            "job_id": job.id,
+            "task_id": job.segment.task_id,
+            "start_frame": job.segment.start_frame,
+            "stop_frame": job.segment.stop_frame,
+            "classifications": classifications,
+            "intervals": [
+                {
+                    "id": i["id"],
+                    "start_frame": i["frame"],
+                    "end_frame": i["end_frame"],
+                    "label": i["label__name"],
+                    "label_color": i["label__color"],
+                    "source": i["source"],
+                }
+                for i in intervals
+            ],
+            "narrations": narrations,
+            "transcripts": transcripts,
+        }
+        return Response(payload)
 
     @tus_chunk_action(detail=True, suffix_base="annotations")
     def append_annotations_chunk(self, request: ExtendedRequest, pk: int, file_id: str):

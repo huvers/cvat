@@ -2,8 +2,8 @@ import React from 'react';
 import Layout from 'antd/lib/layout';
 import Tabs from 'antd/lib/tabs';
 
+import NarrationTab from '../narration-tab/narration-tab';
 import PhaseTrackEditor from '../phase-track-editor/phase-track-editor';
-import TranscriptViewer from '../transcript-viewer/transcript-viewer';
 import VideoClassificationEditor from '../video-classification-editor/video-classification-editor';
 import './styles.scss';
 
@@ -21,7 +21,7 @@ export default function SurgerySidebar(): JSX.Element {
                     {
                         key: 'narration',
                         label: 'Narration',
-                        children: <TranscriptViewer />,
+                        children: <NarrationTab />,
                     },
                     {
                         key: 'phase-track',
