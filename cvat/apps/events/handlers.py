@@ -19,6 +19,8 @@ from cvat.apps.engine.models import (
     Comment,
     Issue,
     Job,
+    JobNarration,
+    JobTranscript,
     Label,
     Project,
     ShapeType,
@@ -31,7 +33,9 @@ from cvat.apps.engine.serializers import (
     CloudStorageReadSerializer,
     CommentReadSerializer,
     IssueReadSerializer,
+    JobNarrationReadSerializer,
     JobReadSerializer,
+    JobTranscriptReadSerializer,
     LabelSerializer,
     ProjectReadSerializer,
     TaskReadSerializer,
@@ -281,6 +285,8 @@ SERIALIZERS = [
     (Membership, MembershipReadSerializer),
     (Invitation, InvitationReadSerializer),
     (Webhook, WebhookReadSerializer),
+    (JobNarration, JobNarrationReadSerializer),
+    (JobTranscript, JobTranscriptReadSerializer),
 ]
 
 

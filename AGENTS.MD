@@ -106,12 +106,13 @@ ____
     - Build a server-side ingestion service: scan prefixes, validate codecs, generate manifests, create tasks/jobs.
     - Add “procedure templating” (ontology + job settings) and map case → tasks automatically.
 
-- [ ] Webhooks aligned with workflow stages (submitted/reviewed/completed)
+- [x] Webhooks aligned with workflow stages (submitted/reviewed/completed)
   - Leading Platform: Workflow-stage webhooks (e.g., at submit and completion stages).
   - CVAT Community gap: Webhooks are event-based; domain events for surgeon workflow states need to be defined.
   - Build notes:
     - Define a workflow state machine that emits webhook events with stable schemas.
     - Add webhook templates for transcription, SAM3 inference, dataset export, QA sampling, etc.
+  - Status: Narration and transcript models wired to webhook dispatch (pre_save/post_save signal handlers + serializer registry). `submitted:procedure` event emitted on job completion with rich surgery context (classifications, interval count, transcript status). `emit_inference_requested()` helper ready for weak labeling pipeline. Event types: `create:narration`, `create:transcript`, `update:transcript`, `submitted:procedure`.
 
 - [ ] Leading Platform-like workflow builder (routers, policy-driven reassignment, reassessment controls)
   - Leading Platform: Routers (percentage/collaborator) + reassessment controls + hide-unassigned semantics.
