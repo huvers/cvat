@@ -2842,6 +2842,30 @@ export default Object.freeze({
                 throw generateError(errorData);
             }
         },
+        exportDatasetCoco: async (datasetId: number): Promise<Record<string, any>> => {
+            const { backendAPI } = config;
+            try {
+                const response = await Axios.get(
+                    `${backendAPI}/datasets/${datasetId}/export-coco`,
+                    { params: { ...enableOrganization() } },
+                );
+                return response.data;
+            } catch (errorData) {
+                throw generateError(errorData);
+            }
+        },
+        exportDatasetTemporal: async (datasetId: number): Promise<Record<string, any>> => {
+            const { backendAPI } = config;
+            try {
+                const response = await Axios.get(
+                    `${backendAPI}/datasets/${datasetId}/export-temporal`,
+                    { params: { ...enableOrganization() } },
+                );
+                return response.data;
+            } catch (errorData) {
+                throw generateError(errorData);
+            }
+        },
         ingestDataset: async (datasetId: number): Promise<void> => {
             const { backendAPI } = config;
             try {
