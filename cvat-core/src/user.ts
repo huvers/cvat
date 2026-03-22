@@ -23,6 +23,9 @@ export default class User {
     public readonly isActive: boolean;
     public readonly isVerified: boolean;
     public readonly hasAnalyticsAccess: boolean;
+    public readonly role: string;
+    public readonly expertiseLevel: string;
+    public readonly profileComplete: boolean;
 
     constructor(initialData: SerializedUser) {
         const data = {
@@ -39,6 +42,9 @@ export default class User {
             is_active: null,
             email_verification_required: null,
             has_analytics_access: null,
+            role: null,
+            expertise_level: null,
+            profile_complete: null,
         };
 
         for (const property in data) {
@@ -88,6 +94,15 @@ export default class User {
                 },
                 hasAnalyticsAccess: {
                     get: () => data.has_analytics_access,
+                },
+                role: {
+                    get: () => data.role || '',
+                },
+                expertiseLevel: {
+                    get: () => data.expertise_level || '',
+                },
+                profileComplete: {
+                    get: () => !!data.profile_complete,
                 },
             }),
         );

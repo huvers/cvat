@@ -519,6 +519,22 @@ class CVATApplication extends React.PureComponent<CVATAppProps & RouteComponentP
 
         if (readyForRender) {
             if (user && user.isVerified) {
+                // Redirect to profile setup if profile is incomplete
+                const isProfileSetupPage = location.pathname === '/profile-setup';
+                const isLogoutPage = location.pathname === '/auth/logout';
+                if (!user.profileComplete && !user.isSuperuser && !isProfileSetupPage && !isLogoutPage) {
+                    return (
+                        <GlobalErrorBoundary>
+                            <Layout>
+                                <Header />
+                                <Layout.Content style={{ height: '100%' }}>
+                                    <Redirect to='/profile-setup' />
+                                </Layout.Content>
+                            </Layout>
+                        </GlobalErrorBoundary>
+                    );
+                }
+
                 return (
                     <GlobalErrorBoundary>
                         <ShortcutsContextProvider>
