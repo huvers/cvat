@@ -3629,6 +3629,25 @@ class JobTranscriptWriteSerializer(serializers.ModelSerializer):
         fields = ("corrected_transcript",)
 
 
+class OntologyVersionSerializer(serializers.ModelSerializer):
+    created_by_username = serializers.CharField(
+        source='created_by.username', read_only=True, default=None,
+    )
+
+    class Meta:
+        model = models.OntologyVersion
+        fields = (
+            "id",
+            "project_id",
+            "version",
+            "schema",
+            "description",
+            "created_by_username",
+            "created_date",
+        )
+        read_only_fields = fields
+
+
 class SurgeryModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.SurgeryModel

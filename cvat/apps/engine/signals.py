@@ -16,7 +16,7 @@ from rest_framework.exceptions import ValidationError
 from cvat.apps.engine.cache import MediaCache
 from cvat.apps.events.handlers import handle_cache_item_create
 
-from .models import Asset, CloudStorage, Data, Job, JobNarration, JobType, Profile, Project, StateChoice, StatusChoice, Task
+from .models import Asset, AttributeSpec, CloudStorage, Data, Job, JobNarration, JobType, Label, Profile, Project, StateChoice, StatusChoice, Task
 
 # TODO: need to log any problems reported by shutil.rmtree when the new
 # analytics feature is available. Now the log system can write information
@@ -241,3 +241,26 @@ def __enqueue_narration_transcription(instance: JobNarration, created: bool, raw
         narration_id=instance.id,
         job_timeout=900,
     )
+
+
+@receiver(post_save, sender=Label)
+@receiver(post_delete, sender=Label)
+@receiver(post_save, sender=AttributeSpec)
+@receiver(post_delete, sender=AttributeSpec)
+def __auto_snapshot_ontology(sender, instance, **kwargs):
+    """Auto-create an ontology version when project labels or attributes change."""
+    project = None
+    if isinstance(instance, Label) and instance.project_id:
+        project = instance.project
+    elif isinstance(instance, AttributeSpec) and instance.label.project_id:
+        project = instance.label.project
+
+    if project is None:
+        return
+
+    try:
+        from cvat.apps.engine.ontology import create_ontology_version
+        create_ontology_version(project, description="Auto-snapshot on label change")
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Failed to auto-snapshot ontology for project %d", project.id)

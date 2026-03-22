@@ -24,6 +24,7 @@ router.register("cloudstorages", views.CloudStorageViewSet)
 router.register("assets", views.AssetsViewSet)
 router.register("guides", views.AnnotationGuidesViewSet)
 router.register("surgery-models", views.SurgeryModelViewSet)
+router.register("ontology-versions", views.OntologyVersionViewSet, basename="ontology-versions")
 router.register("bulk-ingest", views.BulkIngestViewSet, basename="bulk-ingest")
 router.register("surgery-qa", views.SurgeryQAViewSet, basename="surgery-qa")
 

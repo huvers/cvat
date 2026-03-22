@@ -486,6 +486,18 @@ function HeaderComponent(props: Props): JSX.Element {
                     QA
                 </Button>
                 <Button
+                    className={getButtonClassName('ontology')}
+                    type='link'
+                    value='ontology'
+                    href='/ontology'
+                    onClick={(event: React.MouseEvent): void => {
+                        event.preventDefault();
+                        history.push('/ontology');
+                    }}
+                >
+                    Ontology
+                </Button>
+                <Button
                     className={getButtonClassName('requests')}
                     type='link'
                     value='requests'

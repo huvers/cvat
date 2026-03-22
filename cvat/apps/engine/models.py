@@ -757,6 +757,9 @@ class Project(TimestampedModel, AssignableModel, FileSystemRelatedModel):
         blank=True, on_delete=models.SET_NULL, related_name='+')
     target_storage = models.ForeignKey(Storage, null=True, default=None,
         blank=True, on_delete=models.SET_NULL, related_name='+')
+    pinned_ontology_version = models.ForeignKey(
+        'OntologyVersion', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+    )
 
     tasks: models.manager.RelatedManager[Task]
 
@@ -1084,6 +1087,33 @@ class JobTranscript(TimestampedModel):
 
     class Meta:
         default_permissions = ()
+
+
+class OntologyVersion(TimestampedModel):
+    """Immutable snapshot of a project's label schema at a point in time."""
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE,
+        related_name="ontology_versions", related_query_name="ontology_version",
+    )
+    version = models.PositiveIntegerField()
+    schema = models.JSONField()
+    description = models.TextField(blank=True, default='')
+    created_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=['project', 'version'],
+                name='ontology_version_unique',
+            ),
+        ]
+        ordering = ['-version']
+
+    def __str__(self):
+        return f"v{self.version} ({self.project})"
 
 
 class SurgeryModelType(str, models.Choices):
