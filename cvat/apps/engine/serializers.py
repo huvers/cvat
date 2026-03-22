@@ -326,17 +326,46 @@ class UserSerializer(serializers.ModelSerializer):
         required=False,
         read_only=True,
     )
+    role = serializers.CharField(
+        source='profile.role', required=False, allow_blank=True,
+    )
+    expertise_level = serializers.CharField(
+        source='profile.expertise_level', required=False, allow_blank=True,
+    )
+    specialty = serializers.CharField(
+        source='profile.specialty', required=False, allow_blank=True,
+    )
+    institution = serializers.CharField(
+        source='profile.institution', required=False, allow_blank=True,
+    )
+    profile_complete = serializers.BooleanField(
+        source='profile.profile_complete', required=False,
+    )
 
     class Meta:
         model = User
         fields = ('url', 'id', 'username', 'first_name', 'last_name', 'email',
             'groups', 'is_staff', 'is_superuser', 'is_active', 'last_login',
-            'date_joined', 'has_analytics_access')
+            'date_joined', 'has_analytics_access',
+            'role', 'expertise_level', 'specialty', 'institution', 'profile_complete')
         read_only_fields = ('last_login', 'date_joined', 'has_analytics_access')
         write_only_fields = ('password', )
         extra_kwargs = {
             'last_login': { 'allow_null': True }
         }
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop('profile', {})
+        instance = super().update(instance, validated_data)
+        if profile_data:
+            profile = instance.profile
+            for key, value in profile_data.items():
+                setattr(profile, key, value)
+            # Auto-mark profile as complete if role and expertise are set
+            if profile.role and profile.expertise_level:
+                profile.profile_complete = True
+            profile.save()
+        return instance
 
 
 class DelimitedStringListField(serializers.ListField):

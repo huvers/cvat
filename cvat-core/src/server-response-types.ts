@@ -68,6 +68,11 @@ export interface SerializedUser {
     date_joined?: string;
     email_verification_required: boolean;
     has_analytics_access: boolean;
+    role?: string;
+    expertise_level?: string;
+    specialty?: string;
+    institution?: string;
+    profile_complete?: boolean;
 }
 
 interface SerializedStorage {

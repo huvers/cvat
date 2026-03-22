@@ -21,6 +21,8 @@ from datetime import datetime
 
 from django.db.models import Q
 
+from django.contrib.auth.models import User
+
 from cvat.apps.engine.models import (
     Dataset,
     DatasetEpisode,
@@ -36,6 +38,21 @@ from cvat.apps.engine.models import (
 logger = logging.getLogger(__name__)
 
 SURGERY_FPS = 60
+
+
+def _get_annotator_metadata(job: Job) -> dict:
+    """Get the annotator's expertise info for a job."""
+    assignee = job.assignee
+    if not assignee:
+        return {"username": None, "role": None, "expertise_level": None}
+    profile = getattr(assignee, "profile", None)
+    return {
+        "username": assignee.username,
+        "role": getattr(profile, "role", "") if profile else "",
+        "expertise_level": getattr(profile, "expertise_level", "") if profile else "",
+        "specialty": getattr(profile, "specialty", "") if profile else "",
+        "institution": getattr(profile, "institution", "") if profile else "",
+    }
 
 
 def _frame_to_seconds(frame: int, start_frame: int = 0) -> float:
@@ -134,6 +151,8 @@ def export_coco(dataset: Dataset) -> dict:
                 img_id = frame_image_map[frame_key]
                 ann_id += 1
 
+                annotator = _get_annotator_metadata(job)
+
                 annotation = {
                     "id": ann_id,
                     "image_id": img_id,
@@ -141,6 +160,7 @@ def export_coco(dataset: Dataset) -> dict:
                     "iscrowd": 0,
                     "score": shape.score,
                     "source": shape.source,
+                    "annotator": annotator,
                 }
 
                 if shape.type == ShapeType.MASK:
@@ -243,6 +263,7 @@ def export_temporal(dataset: Dataset) -> dict:
             "s3_key": episode.s3_key,
             "status": episode.status,
             "task_id": task.id,
+            "annotators": [],
             "intervals": [],
             "classifications": [],
             "transcripts": [],
@@ -250,6 +271,9 @@ def export_temporal(dataset: Dataset) -> dict:
 
         for job in jobs:
             start_frame = job.segment.start_frame
+            annotator = _get_annotator_metadata(job)
+            if annotator["username"] and annotator not in episode_entry["annotators"]:
+                episode_entry["annotators"].append(annotator)
             stop_frame = job.segment.stop_frame
 
             # Intervals
@@ -265,6 +289,8 @@ def export_temporal(dataset: Dataset) -> dict:
                     "start_seconds": _frame_to_seconds(interval.frame, start_frame),
                     "end_seconds": _frame_to_seconds(interval.end_frame, start_frame),
                     "source": interval.source,
+                    "annotator": annotator["username"],
+                    "annotator_expertise": annotator["expertise_level"],
                 })
 
             # Classifications
