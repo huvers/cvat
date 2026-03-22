@@ -135,15 +135,18 @@ def compute_job_metrics(job: Job) -> dict:
 
 def compute_project_metrics(project_id: int) -> dict:
     """Aggregate metrics across all jobs in a project."""
-    jobs = Job.objects.filter(
-        segment__task__project_id=project_id,
-    ).select_related("segment__task", "assignee")
+    jobs = list(
+        Job.objects.filter(
+            segment__task__project_id=project_id,
+        ).select_related("segment__task", "assignee")
+        .order_by("id")[:500]  # Cap at 500 jobs to bound response time
+    )
 
-    job_metrics = [compute_job_metrics(job) for job in jobs]
-
-    total_jobs = len(job_metrics)
+    total_jobs = len(jobs)
     if total_jobs == 0:
         return {"project_id": project_id, "jobs": [], "summary": {}}
+
+    job_metrics = [compute_job_metrics(job) for job in jobs]
 
     completed = sum(1 for m in job_metrics if m["state"] == "completed")
     avg_coverage = round(
