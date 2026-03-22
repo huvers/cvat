@@ -3648,6 +3648,44 @@ class OntologyVersionSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class DatasetEpisodeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.DatasetEpisode
+        fields = (
+            "id", "episode_name", "s3_key", "task_id", "status",
+            "created_date", "updated_date",
+        )
+        read_only_fields = fields
+
+
+class DatasetReadSerializer(serializers.ModelSerializer):
+    episode_counts = serializers.SerializerMethodField()
+
+    def get_episode_counts(self, obj) -> dict:
+        from django.db.models import Count
+        qs = obj.episodes.values("status").annotate(count=Count("id"))
+        counts = {row["status"]: row["count"] for row in qs}
+        counts["total"] = sum(counts.values())
+        return counts
+
+    class Meta:
+        model = models.Dataset
+        fields = (
+            "id", "name", "procedure_type", "cloud_storage_id",
+            "s3_prefix", "project_id", "owner_id",
+            "episode_counts", "created_date", "updated_date",
+        )
+        read_only_fields = fields
+
+
+class DatasetWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Dataset
+        fields = (
+            "name", "procedure_type", "cloud_storage", "s3_prefix", "project",
+        )
+
+
 class SurgeryModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.SurgeryModel

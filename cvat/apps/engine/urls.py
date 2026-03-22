@@ -27,6 +27,7 @@ router.register("surgery-models", views.SurgeryModelViewSet)
 router.register("ontology-versions", views.OntologyVersionViewSet, basename="ontology-versions")
 router.register("bulk-ingest", views.BulkIngestViewSet, basename="bulk-ingest")
 router.register("surgery-qa", views.SurgeryQAViewSet, basename="surgery-qa")
+router.register("datasets", views.DatasetViewSet)
 
 urlpatterns = [
     # Entry point for a client

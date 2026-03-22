@@ -34,6 +34,7 @@ import SelectCSUpdatingSchemeModal from 'components/update-linked-cs-modal/selec
 
 import JobsPageComponent from 'components/jobs-page/jobs-page';
 import BulkIngestPageComponent from 'components/bulk-ingest-page/bulk-ingest-page';
+import DatasetsPageComponent from 'components/datasets-page/datasets-page';
 import OntologyVersionsPageComponent from 'components/ontology-versions-page/ontology-versions-page';
 import SurgeryQAPageComponent from 'components/surgery-qa-page/surgery-qa-page';
 import MyWorkPageComponent from 'components/my-work-page/my-work-page';
@@ -547,6 +548,7 @@ class CVATApplication extends React.PureComponent<CVATAppProps & RouteComponentP
                                         <Route exact path='/bulk-ingest' component={BulkIngestPageComponent} />
                                         <Route exact path='/surgery-qa' component={SurgeryQAPageComponent} />
                                         <Route exact path='/ontology' component={OntologyVersionsPageComponent} />
+                                        <Route exact path='/datasets' component={DatasetsPageComponent} />
                                         <Route exact path='/jobs' component={JobsPageComponent} />
                                         <Route exact path='/cloudstorages' component={CloudStoragesPageComponent} />
                                         <Route

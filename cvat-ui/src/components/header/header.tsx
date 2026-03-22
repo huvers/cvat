@@ -462,16 +462,16 @@ function HeaderComponent(props: Props): JSX.Element {
                     Cloud Storages
                 </Button>
                 <Button
-                    className={getButtonClassName('bulk-ingest')}
+                    className={getButtonClassName('datasets')}
                     type='link'
-                    value='bulk-ingest'
-                    href='/bulk-ingest'
+                    value='datasets'
+                    href='/datasets'
                     onClick={(event: React.MouseEvent): void => {
                         event.preventDefault();
-                        history.push('/bulk-ingest');
+                        history.push('/datasets');
                     }}
                 >
-                    Ingest
+                    Datasets
                 </Button>
                 <Button
                     className={getButtonClassName('surgery-qa')}
