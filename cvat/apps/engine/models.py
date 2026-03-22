@@ -715,6 +715,8 @@ def clear_annotations_in_jobs(job_ids: Iterable[int]):
         LabeledShape.objects.filter(job_id__in=job_ids_chunk).delete()
         LabeledImageAttributeVal.objects.filter(job_id__in=job_ids_chunk).delete()
         LabeledImage.objects.filter(job_id__in=job_ids_chunk).delete()
+        LabeledIntervalAttributeVal.objects.filter(job_id__in=job_ids_chunk).delete()
+        LabeledInterval.objects.filter(job_id__in=job_ids_chunk).delete()
 
 
 @transaction.atomic(savepoint=False)
@@ -947,6 +949,13 @@ def upload_path_handler(instance: ClientFile, filename: str) -> Path:
     # relative path is required since Django 3.1.11
     return instance.data.get_upload_dirname().relative_to(settings.BASE_DIR) / filename
 
+
+def narration_upload_path_handler(instance: JobNarration, filename: str) -> Path:
+    data = instance.job.segment.task.require_data()
+    narration_dir = data.get_data_dirname() / "narrations" / str(instance.job_id)
+    # relative path is required since Django 3.1.11
+    return narration_dir.relative_to(settings.BASE_DIR) / filename
+
 # For client files which the user is uploaded
 class ClientFile(models.Model):
     data = models.ForeignKey(
@@ -995,6 +1004,27 @@ class RemoteFile(models.Model):
         # Some DBs can shuffle the rows. Here we restore the insertion order.
         # https://github.com/cvat-ai/cvat/pull/5083#discussion_r1038032715
         ordering = ('id', )
+
+
+class JobNarration(TimestampedModel):
+    job = models.ForeignKey(
+        Job, on_delete=models.CASCADE,
+        related_name="narrations", related_query_name="narration",
+    )
+    owner = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    file = models.FileField(
+        upload_to=narration_upload_path_handler, max_length=1024, storage=MyFileSystemStorage()
+    )
+    sample_rate = models.PositiveIntegerField(null=True, blank=True)
+    video_time_offset = models.FloatField(default=0)
+    start_wallclock = models.DateTimeField(null=True, blank=True)
+    duration = models.PositiveIntegerField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        default_permissions = ()
 
 
 class RelatedFile(models.Model):
@@ -1164,13 +1194,16 @@ class Job(TimestampedModel, AssignableModel, FileSystemRelatedModel):
     )
 
     labeledimage_set: models.manager.RelatedManager[LabeledImage]
+    labeledinterval_set: models.manager.RelatedManager[LabeledInterval]
     labeledshape_set: models.manager.RelatedManager[LabeledShape]
     labeledtrack_set: models.manager.RelatedManager[LabeledTrack]
     trackedshape_set: models.manager.RelatedManager[TrackedShape]
     labeledimageattributeval_set: models.manager.RelatedManager[LabeledImageAttributeVal]
+    labeledintervalattributeval_set: models.manager.RelatedManager[LabeledIntervalAttributeVal]
     labeledshapeattributeval_set: models.manager.RelatedManager[LabeledShapeAttributeVal]
     labeledtrackattributeval_set: models.manager.RelatedManager[LabeledTrackAttributeVal]
     trackedshapeattributeval_set: models.manager.RelatedManager[TrackedShapeAttributeVal]
+    narrations: models.manager.RelatedManager[JobNarration]
 
     user_can_view_task: MaybeUndefined[bool]
     "Can be defined by the fetching queryset to avoid extra IAM checks, e.g. in a list serializer"
@@ -1423,6 +1456,22 @@ class LabeledImage(Annotation):
 
 class LabeledImageAttributeVal(AttributeVal):
     image = models.ForeignKey(LabeledImage, on_delete=models.DO_NOTHING,
+        related_name='attributes', related_query_name='attribute')
+
+class LabeledInterval(Annotation):
+    end_frame = models.PositiveIntegerField()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                name="labeledinterval_frame_lte_end_frame",
+                check=models.Q(end_frame__gte=models.F("frame")),
+            ),
+        ]
+
+
+class LabeledIntervalAttributeVal(AttributeVal):
+    interval = models.ForeignKey(LabeledInterval, on_delete=models.DO_NOTHING,
         related_name='attributes', related_query_name='attribute')
 
 class LabeledShape(Annotation, Shape):

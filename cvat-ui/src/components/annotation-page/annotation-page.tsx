@@ -17,6 +17,7 @@ import ReviewAnnotationsWorkspace from 'components/annotation-page/review-worksp
 import StandardWorkspaceComponent from 'components/annotation-page/standard-workspace/standard-workspace';
 import StandardWorkspace3DComponent from 'components/annotation-page/standard3D-workspace/standard3D-workspace';
 import TagAnnotationWorkspace from 'components/annotation-page/tag-annotation-workspace/tag-annotation-workspace';
+import SurgeryWorkspace from 'components/annotation-page/surgery-workspace/surgery-workspace';
 import FiltersModalComponent from 'components/annotation-page/top-bar/filters-modal';
 import { JobNotFoundComponent } from 'components/common/not-found';
 import StatisticsModalComponent from 'components/annotation-page/top-bar/statistics-modal';
@@ -151,6 +152,7 @@ export default function AnnotationPageComponent(props: Props): JSX.Element {
             <Layout.Content className='cvat-annotation-layout-content'>
                 {workspace === Workspace.STANDARD3D && <StandardWorkspace3DComponent />}
                 {workspace === Workspace.STANDARD && <StandardWorkspaceComponent />}
+                {workspace === Workspace.SURGERY && <SurgeryWorkspace />}
                 {workspace === Workspace.SINGLE_SHAPE && <SingleShapeWorkspace />}
                 {workspace === Workspace.ATTRIBUTES && <AttributeAnnotationWorkspace />}
                 {workspace === Workspace.TAGS && <TagAnnotationWorkspace />}

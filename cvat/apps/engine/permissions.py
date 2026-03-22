@@ -1009,6 +1009,8 @@ class JobPermission(OpenPolicyAgentPermission, DownloadExportedExtension):
             ("annotations", "POST"): Scopes.IMPORT_ANNOTATIONS,
             ("append_annotations_chunk", "PATCH"): Scopes.UPDATE_ANNOTATIONS,
             ("append_annotations_chunk", "HEAD"): Scopes.UPDATE_ANNOTATIONS,
+            ("narrations", "GET"): Scopes.VIEW,
+            ("narrations", "POST"): Scopes.UPDATE_ANNOTATIONS,
             ("data", "GET"): Scopes.VIEW_DATA,
             ("metadata", "GET"): Scopes.VIEW_METADATA,
             ("metadata", "PATCH"): Scopes.UPDATE_METADATA,

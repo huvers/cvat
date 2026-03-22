@@ -943,6 +943,7 @@ export interface AnnotationState {
 export enum Workspace {
     STANDARD3D = 'Standard 3D',
     STANDARD = 'Standard',
+    SURGERY = 'Surgery',
     ATTRIBUTES = 'Attribute annotation',
     SINGLE_SHAPE = 'Single shape',
     TAGS = 'Tag annotation',

@@ -322,7 +322,7 @@ class _DbTestBase(ExportApiTestBase, ImportApiTestBase):
 
         tmp_annotations = copy.deepcopy(annotations[name_ann])
 
-        for item in ["tags", "shapes", "tracks"]:
+        for item in ["tags", "intervals", "shapes", "tracks"]:
             for _element in tmp_annotations.get(item, []):
                 fill_all_attributes_in_element(item == "tracks", _element, task["labels"][0])
 

@@ -2732,6 +2732,7 @@ class TaskWriteSerializer(WriteOnceMixin, serializers.ModelSerializer, OrgTransf
                     (models.LabeledTrackAttributeVal, 'track'),
                     (models.LabeledShapeAttributeVal, 'shape'),
                     (models.LabeledImageAttributeVal, 'image'),
+                    (models.LabeledIntervalAttributeVal, 'interval'),
                     (models.TrackedShapeAttributeVal, 'shape__track')
                 ):
                     model.objects.filter(**{
@@ -2740,7 +2741,7 @@ class TaskWriteSerializer(WriteOnceMixin, serializers.ModelSerializer, OrgTransf
                         'spec': old_attr
                     }).update(spec=new_attr)
 
-            for model in (models.LabeledTrack, models.LabeledShape, models.LabeledImage):
+            for model in (models.LabeledTrack, models.LabeledShape, models.LabeledImage, models.LabeledInterval):
                 model.objects.filter(job__segment__task=instance, label=old_label).update(
                     label=new_label
                 )
@@ -3315,6 +3316,15 @@ class AnnotationSerializer(serializers.Serializer):
 class LabeledImageSerializer(AnnotationSerializer):
     attributes = AttributeValSerializer(many=True, default=[])
 
+class LabeledIntervalSerializer(AnnotationSerializer):
+    end_frame = serializers.IntegerField(min_value=0)
+    attributes = AttributeValSerializer(many=True, default=[])
+
+    def validate(self, attrs):
+        if attrs["end_frame"] < attrs["frame"]:
+            raise serializers.ValidationError({"end_frame": "must be greater than or equal to frame"})
+        return attrs
+
 class OptimizedFloatListField(serializers.ListField):
     '''Default ListField is extremely slow when try to process long lists of points'''
 
@@ -3423,6 +3433,17 @@ class LabeledImageSerializerFromDB(serializers.BaseSerializer):
 
         return convert_tag(instance)
 
+class LabeledIntervalSerializerFromDB(serializers.BaseSerializer):
+    # Use this serializer to export data from the database
+    # Because default DRF serializer is too slow on huge collections
+    def to_representation(self, instance):
+        def convert_interval(interval):
+            result = _convert_annotation(interval, ['id', 'label_id', 'frame', 'end_frame', 'group', 'source'])
+            result['attributes'] = _convert_attributes(interval['attributes'])
+            return result
+
+        return convert_interval(instance)
+
 class LabeledShapeSerializerFromDB(serializers.BaseSerializer):
     # Use this serializer to export data from the database
     # Because default DRF serializer is too slow on huge collections
@@ -3474,6 +3495,7 @@ class LabeledTrackSerializer(SubLabeledTrackSerializer):
 class LabeledDataSerializer(serializers.Serializer):
     version = serializers.IntegerField(default=0) # TODO: remove
     tags   = LabeledImageSerializer(many=True, default=[])
+    intervals = LabeledIntervalSerializer(many=True, default=[])
     shapes = LabeledShapeSerializer(many=True, default=[])
     tracks = LabeledTrackSerializer(many=True, default=[])
 
@@ -3499,6 +3521,55 @@ class TaskFileSerializer(serializers.Serializer):
 
 class ProjectFileSerializer(serializers.Serializer):
     project_file = serializers.FileField()
+
+
+class JobNarrationReadSerializer(serializers.ModelSerializer):
+    owner = BasicUserSerializer(allow_null=True, required=False)
+    filename = serializers.SerializerMethodField()
+
+    def get_filename(self, obj: models.JobNarration) -> str:
+        return Path(obj.file.name).name
+
+    class Meta:
+        model = models.JobNarration
+        fields = (
+            "id",
+            "job_id",
+            "owner",
+            "created_date",
+            "updated_date",
+            "filename",
+            "sample_rate",
+            "video_time_offset",
+            "start_wallclock",
+            "duration",
+            "metadata",
+        )
+        read_only_fields = fields
+
+
+class JobNarrationWriteSerializer(serializers.ModelSerializer):
+    file = serializers.FileField(required=True, write_only=True, allow_empty_file=False, max_length=MAX_FILENAME_LENGTH)
+
+    def validate_file(self, value):
+        if not isinstance(value, UploadedFile):
+            raise serializers.ValidationError("Invalid file type. Expected an UploadedFile instance.")
+
+        if not value.content_type.startswith("audio/"):
+            raise serializers.ValidationError("Invalid file type. Expected an audio/* content type.")
+
+        return value
+
+    class Meta:
+        model = models.JobNarration
+        fields = (
+            "file",
+            "sample_rate",
+            "video_time_offset",
+            "start_wallclock",
+            "duration",
+            "metadata",
+        )
 
 
 class CommentReadSerializer(serializers.ModelSerializer):

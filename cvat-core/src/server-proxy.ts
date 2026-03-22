@@ -19,7 +19,7 @@ import {
     SerializedQualitySettingsData, APIQualitySettingsFilter, SerializedQualityConflictData, APIQualityConflictsFilter,
     SerializedQualityReportData, APIQualityReportsFilter, APIAnalyticsEventsFilter, APIConsensusSettingsFilter,
     SerializedRequest, SerializedJobValidationLayout, SerializedTaskValidationLayout, SerializedConsensusSettingsData,
-    SerializedApiToken, APIApiTokensFilter,
+    SerializedApiToken, APIApiTokensFilter, SerializedJobNarration,
 } from './server-response-types';
 import { APIApiTokenModifiableFields } from './server-request-types';
 import { PaginatedResource, SerializedModel, UpdateStatusData } from './core-types';
@@ -1504,6 +1504,79 @@ async function deleteJob(jobID: number): Promise<void> {
     }
 }
 
+async function getJobNarrations(jobID: number): Promise<SerializedJobNarration[]> {
+    const { backendAPI } = config;
+
+    try {
+        const response = await Axios.get(`${backendAPI}/jobs/${jobID}/narrations`, {
+            params: {
+                ...enableOrganization(),
+            },
+        });
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function createJobNarration(
+    jobID: number,
+    {
+        file,
+        filename,
+        sampleRate,
+        videoTimeOffset,
+        startWallclock,
+        duration,
+        metadata,
+    }: {
+        file: Blob;
+        filename: string;
+        sampleRate?: number;
+        videoTimeOffset?: number;
+        startWallclock?: string;
+        duration?: number;
+        metadata?: Record<string, any>;
+    },
+): Promise<SerializedJobNarration> {
+    const { backendAPI } = config;
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file, filename);
+
+        if (typeof sampleRate !== 'undefined') {
+            formData.append('sample_rate', `${sampleRate}`);
+        }
+
+        if (typeof videoTimeOffset !== 'undefined') {
+            formData.append('video_time_offset', `${videoTimeOffset}`);
+        }
+
+        if (typeof startWallclock !== 'undefined') {
+            formData.append('start_wallclock', startWallclock);
+        }
+
+        if (typeof duration !== 'undefined') {
+            formData.append('duration', `${duration}`);
+        }
+
+        if (typeof metadata !== 'undefined') {
+            formData.append('metadata', JSON.stringify(metadata));
+        }
+
+        const response = await Axios.post(`${backendAPI}/jobs/${jobID}/narrations`, formData, {
+            params: {
+                ...enableOrganization(),
+            },
+        });
+
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
 const validationLayout = (instance: 'tasks' | 'jobs') => async (
     id: number,
 ): Promise<SerializedJobValidationLayout | SerializedTaskValidationLayout> => {
@@ -2525,6 +2598,8 @@ export default Object.freeze({
         exportDataset: exportDataset('jobs'),
         validationLayout: validationLayout('jobs'),
         mergeConsensusJobs,
+        getNarrations: getJobNarrations,
+        createNarration: createJobNarration,
     }),
 
     users: Object.freeze({

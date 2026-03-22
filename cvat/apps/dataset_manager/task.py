@@ -432,6 +432,39 @@ class JobAnnotation:
 
         self.ir_data.tags = tags
 
+    def _save_intervals_to_db(self, intervals):
+        db_intervals = []
+        db_attr_vals = []
+
+        for interval in intervals:
+            attributes = interval.pop("attributes", [])
+            db_interval = models.LabeledInterval(job=self.db_job, **interval)
+
+            self._validate_label_for_existence(db_interval.label_id)
+
+            for attr in attributes:
+                db_attr_val = models.LabeledIntervalAttributeVal(**attr, job_id=self.db_job.id)
+
+                self._validate_attribute_for_existence(db_attr_val, db_interval.label_id, "all")
+
+                db_attr_val.interval_id = len(db_intervals)
+                db_attr_vals.append(db_attr_val)
+
+            db_intervals.append(db_interval)
+            interval["attributes"] = attributes
+
+        db_intervals = bulk_create(models.LabeledInterval, db_intervals)
+
+        for db_attr_val in db_attr_vals:
+            db_attr_val.interval_id = db_intervals[db_attr_val.interval_id].id
+
+        bulk_create(models.LabeledIntervalAttributeVal, db_attr_vals)
+
+        for interval, db_interval in zip(intervals, db_intervals):
+            interval["id"] = db_interval.id
+
+        self.ir_data.intervals = intervals
+
     def _set_updated_date(self):
         db_task = self.db_job.segment.task
         with transaction.atomic():
@@ -442,11 +475,12 @@ class JobAnnotation:
 
     @staticmethod
     def _data_is_empty(data):
-        return not (data["tags"] or data["shapes"] or data["tracks"])
+        return not (data.get("tags") or data.get("intervals") or data.get("shapes") or data.get("tracks"))
 
     def _create(self, data):
         self.reset()
         self._save_tags_to_db(data["tags"])
+        self._save_intervals_to_db(data.get("intervals", []))
         self._save_shapes_to_db(data["shapes"])
         self._save_tracks_to_db(data["tracks"])
 
@@ -508,6 +542,13 @@ class JobAnnotation:
         models.LabeledImageAttributeVal.objects.filter(image_id__in=ids).delete()
         self.db_job.labeledimage_set.filter(pk__in=ids).delete()
 
+    def _delete_job_labeledintervals(self, ids__UNSAFE: list[int]) -> None:
+        # ids__UNSAFE is a list, received from the user
+        # we MUST filter it by job_id additionally before applying to any queries
+        ids = self.db_job.labeledinterval_set.filter(pk__in=ids__UNSAFE).values_list("id", flat=True)
+        models.LabeledIntervalAttributeVal.objects.filter(interval_id__in=ids).delete()
+        self.db_job.labeledinterval_set.filter(pk__in=ids).delete()
+
     def _delete_job_labeledshapes(
         self, ids__UNSAFE: list[int], *, is_subcall: bool = False
     ) -> None:
@@ -557,11 +598,15 @@ class JobAnnotation:
             models.clear_annotations_in_jobs([self.db_job.id])
         else:
             labeledimage_ids = [image["id"] for image in data["tags"]]
+            labeledinterval_ids = [interval["id"] for interval in data.get("intervals", [])]
             labeledshape_ids = [shape["id"] for shape in data["shapes"]]
             labeledtrack_ids = [track["id"] for track in data["tracks"]]
 
             for labeledimage_ids_chunk in take_by(labeledimage_ids, chunk_size=1000):
                 self._delete_job_labeledimages(labeledimage_ids_chunk)
+
+            for labeledinterval_ids_chunk in take_by(labeledinterval_ids, chunk_size=1000):
+                self._delete_job_labeledintervals(labeledinterval_ids_chunk)
 
             for labeledshape_ids_chunk in take_by(labeledshape_ids, chunk_size=1000):
                 self._delete_job_labeledshapes(labeledshape_ids_chunk)
@@ -572,6 +617,7 @@ class JobAnnotation:
             deleted_data = {
                 "version": self.ir_data.version,
                 "tags": data["tags"],
+                "intervals": data.get("intervals", []),
                 "shapes": data["shapes"],
                 "tracks": data["tracks"],
             }
@@ -628,6 +674,35 @@ class JobAnnotation:
 
         serializer = serializers.LabeledImageSerializerFromDB(db_tags, many=True)
         self.ir_data.tags = serializer.data
+
+    def _init_intervals_from_db(self):
+        db_intervals = [
+            dotdict(row)
+            for row in self.db_job.labeledinterval_set.values(
+                "id",
+                "frame",
+                "end_frame",
+                "label_id",
+                "group",
+                "source",
+            )
+            .order_by("frame")
+            .iterator(chunk_size=settings.DEFAULT_DB_ANNO_CHUNK_SIZE)
+        ]
+
+        labeledinterval_attributes = _receive_attributes_from_db(
+            self.db_job.labeledintervalattributeval_set,
+            "interval_id",
+        )
+
+        for db_interval in db_intervals:
+            db_interval.attributes = labeledinterval_attributes[db_interval.id]
+            self._extend_attributes(
+                db_interval.attributes, self.db_attributes[db_interval.label_id]["all"].values()
+            )
+
+        serializer = serializers.LabeledIntervalSerializerFromDB(db_intervals, many=True)
+        self.ir_data.intervals = serializer.data
 
     def _init_shapes_from_db(self, *, streaming: bool = False):
         db_shapes = (
@@ -801,6 +876,7 @@ class JobAnnotation:
 
     def init_from_db(self, *, streaming: bool = False):
         self._init_tags_from_db()
+        self._init_intervals_from_db()
         self._init_shapes_from_db(streaming=streaming)
         self._init_tracks_from_db()
         self._init_version_from_db()
@@ -965,7 +1041,12 @@ class TaskAnnotation:
 
         gt_annotations = data.slice(min(gt_pool_frames), max(gt_pool_frames))
 
-        if action and not (gt_annotations.tags or gt_annotations.shapes or gt_annotations.tracks):
+        if action and not (
+            gt_annotations.tags
+            or gt_annotations.intervals
+            or gt_annotations.shapes
+            or gt_annotations.tracks
+        ):
             return
 
         if not (

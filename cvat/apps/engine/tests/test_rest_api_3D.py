@@ -113,7 +113,7 @@ class _DbTestBase(ExportApiTestBase, ImportApiTestBase):
     def _get_tmp_annotation(task, annotation):
         tmp_annotations = copy.deepcopy(annotation)
         for item in tmp_annotations:
-            if item in ["tags", "shapes", "tracks"]:
+            if item in ["tags", "intervals", "shapes", "tracks"]:
                 for index_elem, _ in enumerate(tmp_annotations[item]):
                     tmp_annotations[item][index_elem]["label_id"] = task["labels"][0]["id"]
 
