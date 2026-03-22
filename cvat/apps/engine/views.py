@@ -2076,6 +2076,41 @@ class JobViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateMo
         suggestions = get_copilot_suggestions(self._object)
         return Response(suggestions)
 
+    @extend_schema(methods=['POST'], summary='Run SAM3 segmentation on selected frames',
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'frame_spec': {
+                        'description': '"all", "intervals", {"mode": "window", "start": 100, "end": 500, "step": 10}, or [100, 200, 300]',
+                    },
+                    'model_name': {'type': 'string', 'nullable': True},
+                },
+            }
+        },
+        responses={'202': None})
+    @action(detail=True, methods=['POST'], url_path=r'run-segmentation/?$',
+        serializer_class=None)
+    def run_segmentation(self, request: ExtendedRequest, pk: int):
+        """Enqueue SAM3 segmentation for this job with flexible frame selection."""
+        self._object: models.Job = self.get_object()
+        frame_spec = request.data.get('frame_spec', 'all')
+        model_name = request.data.get('model_name')
+
+        import django_rq
+        queue = django_rq.get_queue(settings.CVAT_QUEUES.AUTO_ANNOTATION.value)
+        queue.enqueue(
+            'cvat.apps.engine.segmentation.run_segmentation',
+            job_id=self._object.id,
+            frame_spec=frame_spec,
+            model_name=model_name,
+            job_timeout=1800,
+        )
+        return Response(
+            {'detail': f'Segmentation queued for job {self._object.id}'},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
     @extend_schema(methods=['GET'], summary='Export surgery annotations as JSON',
         responses={
             '200': None,

@@ -2765,6 +2765,22 @@ export default Object.freeze({
                 throw generateError(errorData);
             }
         },
+        runSegmentation: async (
+            jobID: number,
+            frameSpec: any = 'all',
+            modelName?: string,
+        ): Promise<void> => {
+            const { backendAPI } = config;
+            try {
+                await Axios.post(
+                    `${backendAPI}/jobs/${jobID}/run-segmentation`,
+                    { frame_spec: frameSpec, model_name: modelName },
+                    { params: { ...enableOrganization() } },
+                );
+            } catch (errorData) {
+                throw generateError(errorData);
+            }
+        },
         triggerWeakLabeling: async (jobID: number): Promise<void> => {
             const { backendAPI } = config;
             try {
