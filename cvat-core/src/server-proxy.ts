@@ -2743,6 +2743,17 @@ export default Object.freeze({
         getTranscripts: getJobTranscripts,
         updateTranscript: updateJobTranscript,
         getSurgeryExport,
+        getSurgeryMetrics: async (jobID: number): Promise<Record<string, any>> => {
+            const { backendAPI } = config;
+            try {
+                const response = await Axios.get(`${backendAPI}/jobs/${jobID}/surgery-metrics`, {
+                    params: { ...enableOrganization() },
+                });
+                return response.data;
+            } catch (errorData) {
+                throw generateError(errorData);
+            }
+        },
         getCopilotSuggestions: async (jobID: number): Promise<Record<string, any>> => {
             const { backendAPI } = config;
             try {

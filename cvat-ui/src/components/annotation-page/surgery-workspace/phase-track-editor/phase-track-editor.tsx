@@ -3,20 +3,23 @@
 // SPDX-License-Identifier: MIT
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import Button from 'antd/lib/button';
 import InputNumber from 'antd/lib/input-number';
 import Select from 'antd/lib/select';
 import Spin from 'antd/lib/spin';
 import Tooltip from 'antd/lib/tooltip';
 import notification from 'antd/lib/notification';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { CheckOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 
 import { Job } from 'cvat-core-wrapper';
 import { CombinedState } from 'reducers';
 import { Source } from 'cvat-core/src/enums';
+import { changeFrameAsync } from 'actions/annotation-actions';
 import serverProxy from 'cvat-core/src/server-proxy';
 import { SerializedInterval } from 'cvat-core/src/server-response-types';
+
+import { frameToTime } from '../utils';
 
 import './styles.scss';
 
@@ -147,6 +150,41 @@ export default function PhaseTrackEditor(): JSX.Element {
         }
     }, [job]);
 
+    const dispatch = useDispatch();
+
+    const seekToFrame = useCallback((frame: number) => {
+        dispatch(changeFrameAsync(frame));
+    }, [dispatch]);
+
+    const acceptAllAuto = useCallback(async () => {
+        if (!job) return;
+        const autoIntervals = intervals.filter(
+            (i) => i.source === 'auto' || i.source === 'semi-auto',
+        );
+        if (autoIntervals.length === 0) return;
+        setSaving(true);
+        try {
+            const updated = autoIntervals.map((i) => ({ ...i, source: Source.MANUAL }));
+            await serverProxy.annotations.updateAnnotations(
+                'job',
+                job.id,
+                { version: 0, tags: [], shapes: [], tracks: [], intervals: updated },
+                'update',
+            );
+            setIntervals((prev) => prev.map((i) => {
+                const match = updated.find((u) => u.id === i.id);
+                return match ?? i;
+            }));
+            notification.success({ message: `Accepted ${autoIntervals.length} predictions` });
+        } catch (err: unknown) {
+            notification.error({ message: 'Failed to accept predictions', description: String(err) });
+        } finally {
+            setSaving(false);
+        }
+    }, [job, intervals]);
+
+    const autoCount = intervals.filter((i) => i.source === 'auto' || i.source === 'semi-auto').length;
+
     const labelMap = Object.fromEntries(labels.map((l) => [l.id, l]));
     const canCreate = !saving && selectedLabelId !== null && startFrame !== null && endFrame !== null;
 
@@ -183,7 +221,7 @@ export default function PhaseTrackEditor(): JSX.Element {
                         />
                         <Tooltip title={`Set to current frame (${currentFrame})`}>
                             <Button size='small' onClick={() => setStartFrame(currentFrame)}>
-                                {currentFrame}
+                                {frameToTime(currentFrame, jobStartFrame)}
                             </Button>
                         </Tooltip>
                     </div>
@@ -198,7 +236,7 @@ export default function PhaseTrackEditor(): JSX.Element {
                         />
                         <Tooltip title={`Set to current frame (${currentFrame})`}>
                             <Button size='small' onClick={() => setEndFrame(currentFrame)}>
-                                {currentFrame}
+                                {frameToTime(currentFrame, jobStartFrame)}
                             </Button>
                         </Tooltip>
                     </div>
@@ -213,6 +251,16 @@ export default function PhaseTrackEditor(): JSX.Element {
                 >
                     Add Interval
                 </Button>
+                {autoCount > 0 && (
+                    <Button
+                        icon={<CheckOutlined />}
+                        disabled={saving}
+                        onClick={acceptAllAuto}
+                        block
+                    >
+                        {`Accept ${autoCount} prediction${autoCount > 1 ? 's' : ''}`}
+                    </Button>
+                )}
             </div>
 
             {/* ── Timeline ── */}
@@ -225,10 +273,11 @@ export default function PhaseTrackEditor(): JSX.Element {
                     );
                     const label = labelMap[interval.label_id];
                     const isAuto = interval.source === 'auto' || interval.source === 'semi-auto';
+                    const timeRange = `${frameToTime(interval.frame, jobStartFrame)}–${frameToTime(interval.end_frame, jobStartFrame)}`;
                     return (
                         <Tooltip
                             key={interval.id ?? `tmp-${idx}`}
-                            title={`${label?.name ?? 'Unknown'}: ${interval.frame}–${interval.end_frame}${isAuto ? ' (model prediction)' : ''}`}
+                            title={`${label?.name ?? 'Unknown'}: ${timeRange}${isAuto ? ' (model prediction)' : ''}`}
                         >
                             <div
                                 className={`cvat-phase-track-bar${isAuto ? ' cvat-phase-track-bar-auto' : ''}`}
@@ -236,7 +285,9 @@ export default function PhaseTrackEditor(): JSX.Element {
                                     left: `${left}%`,
                                     width: `${width}%`,
                                     backgroundColor: label?.color ?? '#888',
+                                    cursor: 'pointer',
                                 }}
+                                onClick={() => seekToFrame(interval.frame)}
                             />
                         </Tooltip>
                     );
@@ -247,6 +298,18 @@ export default function PhaseTrackEditor(): JSX.Element {
                         left: `${((currentFrame - jobStartFrame) / totalFrames) * 100}%`,
                     }}
                 />
+            </div>
+            {/* ── Time scale ── */}
+            <div className='cvat-phase-track-timescale'>
+                {Array.from({ length: 7 }, (_, i) => {
+                    const pct = (i / 6) * 100;
+                    const frame = jobStartFrame + Math.round((i / 6) * totalFrames);
+                    return (
+                        <span key={i} className='cvat-phase-track-tick' style={{ left: `${pct}%` }}>
+                            {frameToTime(frame, jobStartFrame)}
+                        </span>
+                    );
+                })}
             </div>
 
             {/* ── Interval List ── */}
@@ -273,8 +336,15 @@ export default function PhaseTrackEditor(): JSX.Element {
                                         className='cvat-phase-track-list-dot'
                                         style={{ backgroundColor: label?.color ?? '#888' }}
                                     />
-                                    <span className='cvat-phase-track-list-name'>
+                                    <span
+                                        className='cvat-phase-track-list-name'
+                                        onClick={() => seekToFrame(interval.frame)}
+                                        style={{ cursor: 'pointer' }}
+                                    >
                                         {label?.name ?? 'Unknown'}
+                                    </span>
+                                    <span className='cvat-phase-track-list-time'>
+                                        {frameToTime(interval.frame, jobStartFrame)}
                                     </span>
                                     <InputNumber
                                         className='cvat-phase-track-inline-input'
@@ -299,6 +369,9 @@ export default function PhaseTrackEditor(): JSX.Element {
                                             if (v !== null) updateInterval(interval, interval.frame, v as number);
                                         }}
                                     />
+                                    <span className='cvat-phase-track-list-time'>
+                                        {frameToTime(interval.end_frame, jobStartFrame)}
+                                    </span>
                                     <Button
                                         size='small'
                                         danger

@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router';
 import Button from 'antd/lib/button';
 import Layout from 'antd/lib/layout';
+import Modal from 'antd/lib/modal';
 import Tabs from 'antd/lib/tabs';
 import notification from 'antd/lib/notification';
 import { CheckOutlined, DownloadOutlined } from '@ant-design/icons';
@@ -30,7 +31,7 @@ export default function SurgerySidebar(): JSX.Element {
     const [submitting, setSubmitting] = useState(false);
     const [exporting, setExporting] = useState(false);
 
-    const handleSubmitAndNext = useCallback(async () => {
+    const doSubmit = useCallback(async () => {
         if (!job) return;
         setSubmitting(true);
         try {
@@ -46,6 +47,44 @@ export default function SurgerySidebar(): JSX.Element {
             setSubmitting(false);
         }
     }, [dispatch, history, job]);
+
+    const handleSubmitAndNext = useCallback(async () => {
+        if (!job) return;
+        // Fetch metrics for the confirmation summary
+        try {
+            const metrics = await serverProxy.jobs.getSurgeryMetrics(job.id);
+            const cov = metrics.coverage?.coverage_pct ?? '?';
+            const intervals = metrics.intervals?.total ?? '?';
+            const autoCount = metrics.intervals?.auto ?? 0;
+            const openIssues = metrics.issues?.open ?? 0;
+            const narrations = metrics.narrations ?? 0;
+
+            Modal.confirm({
+                title: 'Submit this job?',
+                content: (
+                    <div style={{ lineHeight: 1.8 }}>
+                        <div>{`Coverage: ${cov}%`}</div>
+                        <div>{`Phases: ${intervals}${autoCount > 0 ? ` (${autoCount} auto)` : ''}`}</div>
+                        <div>{`Narrations: ${narrations}`}</div>
+                        {openIssues > 0 && (
+                            <div style={{ color: '#faad14' }}>{`${openIssues} open issue${openIssues > 1 ? 's' : ''}`}</div>
+                        )}
+                    </div>
+                ),
+                okText: 'Submit & Next',
+                cancelText: 'Cancel',
+                onOk: doSubmit,
+            });
+        } catch {
+            // If metrics fail, submit anyway with basic confirm
+            Modal.confirm({
+                title: 'Submit this job and move to the next?',
+                okText: 'Submit & Next',
+                cancelText: 'Cancel',
+                onOk: doSubmit,
+            });
+        }
+    }, [job, doSubmit]);
 
     const handleExport = useCallback(async () => {
         if (!job) return;
