@@ -16,7 +16,7 @@ from rest_framework.exceptions import ValidationError
 from cvat.apps.engine.cache import MediaCache
 from cvat.apps.events.handlers import handle_cache_item_create
 
-from .models import Asset, CloudStorage, Data, Job, JobType, Profile, Project, StatusChoice, Task
+from .models import Asset, CloudStorage, Data, Job, JobNarration, JobType, Profile, Project, StatusChoice, Task
 
 # TODO: need to log any problems reported by shutil.rmtree when the new
 # analytics feature is available. Now the log system can write information
@@ -219,4 +219,20 @@ def __cache_item_created_handler(
         **cache_item_info,
         size=item_data_size,
         queue=rq_queue,
+    )
+
+
+@receiver(post_save, sender=JobNarration)
+def __enqueue_narration_transcription(instance: JobNarration, created: bool, raw: bool, **kwargs):
+    """Auto-trigger the transcription pipeline when a narration is uploaded."""
+    if not created or raw:
+        return
+
+    import django_rq
+
+    queue = django_rq.get_queue(settings.CVAT_QUEUES.AUTO_ANNOTATION.value)
+    queue.enqueue(
+        "cvat.apps.engine.transcription.process_narration",
+        narration_id=instance.id,
+        job_timeout=900,
     )

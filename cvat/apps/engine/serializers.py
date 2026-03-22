@@ -3605,6 +3605,24 @@ class JobClassificationWriteSerializer(serializers.ModelSerializer):
         fields = ("label_id",)
 
 
+class JobTranscriptReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.JobTranscript
+        fields = (
+            "id",
+            "narration_id",
+            "status",
+            "raw_transcript",
+            "corrected_transcript",
+            "word_timestamps",
+            "error_message",
+            "model_info",
+            "created_date",
+            "updated_date",
+        )
+        read_only_fields = fields
+
+
 class CommentReadSerializer(serializers.ModelSerializer):
     owner = BasicUserSerializer(allow_null=True, required=False)
 

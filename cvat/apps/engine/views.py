@@ -128,6 +128,7 @@ from cvat.apps.engine.serializers import (
     JobClassificationWriteSerializer,
     JobNarrationReadSerializer,
     JobNarrationWriteSerializer,
+    JobTranscriptReadSerializer,
     JobReadSerializer,
     JobValidationLayoutReadSerializer,
     JobValidationLayoutWriteSerializer,
@@ -1957,6 +1958,20 @@ class JobViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateMo
             JobClassificationReadSerializer(classification).data,
             status=status.HTTP_201_CREATED,
         )
+
+    @extend_schema(methods=['GET'], summary='List transcripts for a job',
+        responses={
+            '200': JobTranscriptReadSerializer(many=True),
+        })
+    @action(detail=True, methods=['GET'], url_path=r'transcripts/?$',
+        serializer_class=None)
+    def transcripts(self, request: ExtendedRequest, pk: int):
+        self._object: models.Job = self.get_object()
+        queryset = models.JobTranscript.objects.filter(
+            narration__job_id=self._object.id,
+        ).order_by('-created_date')
+        serializer = JobTranscriptReadSerializer(queryset, many=True)
+        return Response(serializer.data)
 
     @tus_chunk_action(detail=True, suffix_base="annotations")
     def append_annotations_chunk(self, request: ExtendedRequest, pk: int, file_id: str):

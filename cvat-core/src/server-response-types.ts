@@ -194,6 +194,21 @@ export interface SerializedJobClassification {
     updated_date: string;
 }
 
+export type TranscriptStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface SerializedJobTranscript {
+    id: number;
+    narration_id: number;
+    status: TranscriptStatus;
+    raw_transcript: string;
+    corrected_transcript: string;
+    word_timestamps: { word: string; start: number; end: number }[];
+    error_message: string;
+    model_info: Record<string, any>;
+    created_date: string;
+    updated_date: string;
+}
+
 export type AttrInputType = 'select' | 'radio' | 'checkbox' | 'number' | 'text';
 export interface SerializedAttribute {
     name: string;

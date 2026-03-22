@@ -1,9 +1,9 @@
 import React from 'react';
 import Layout from 'antd/lib/layout';
 import Tabs from 'antd/lib/tabs';
-import Typography from 'antd/lib/typography';
 
 import PhaseTrackEditor from '../phase-track-editor/phase-track-editor';
+import TranscriptViewer from '../transcript-viewer/transcript-viewer';
 import VideoClassificationEditor from '../video-classification-editor/video-classification-editor';
 import './styles.scss';
 
@@ -21,11 +21,7 @@ export default function SurgerySidebar(): JSX.Element {
                     {
                         key: 'narration',
                         label: 'Narration',
-                        children: (
-                            <Typography.Paragraph className='cvat-surgery-sidebar-placeholder'>
-                                Narration capture + transcript tooling will live here.
-                            </Typography.Paragraph>
-                        ),
+                        children: <TranscriptViewer />,
                     },
                     {
                         key: 'phase-track',
