@@ -17,7 +17,7 @@ from django.db.models import Model
 from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
 from django.dispatch import Signal, receiver
 
-from cvat.apps.engine.models import Comment, Issue, Job, Project, Task
+from cvat.apps.engine.models import Comment, Issue, Job, JobNarration, JobTranscript, Project, Task
 from cvat.apps.engine.serializers import BasicUserSerializer
 from cvat.apps.events.handlers import (
     get_instance_diff,
@@ -160,6 +160,8 @@ def get_sender(instance):
 @receiver(pre_save, sender=Organization)
 @receiver(pre_save, sender=Invitation)
 @receiver(pre_save, sender=Membership)
+@receiver(pre_save, sender=JobNarration)
+@receiver(pre_save, sender=JobTranscript)
 def pre_save_resource_event(sender, instance, **kwargs):
     instance._webhooks_selected_webhooks = []
 
@@ -222,6 +224,8 @@ def pre_save_resource_event(sender, instance, **kwargs):
 @receiver(post_save, sender=Organization)
 @receiver(post_save, sender=Invitation)
 @receiver(post_save, sender=Membership)
+@receiver(post_save, sender=JobNarration)
+@receiver(post_save, sender=JobTranscript)
 def post_save_resource_event(sender, instance, created: bool, raw: bool, **kwargs):
     if created and raw:
         return

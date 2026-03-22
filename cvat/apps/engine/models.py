@@ -1023,6 +1023,13 @@ class JobNarration(TimestampedModel):
     duration = models.PositiveIntegerField(null=True, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
 
+    @property
+    def organization_id(self):
+        return self.job.segment.task.organization_id
+
+    def get_project_id(self):
+        return self.job.segment.task.project_id
+
     class Meta:
         default_permissions = ()
 
@@ -1067,6 +1074,13 @@ class JobTranscript(TimestampedModel):
     word_timestamps = models.JSONField(default=list, blank=True)
     error_message = models.TextField(blank=True, default='')
     model_info = models.JSONField(default=dict, blank=True)
+
+    @property
+    def organization_id(self):
+        return self.narration.organization_id
+
+    def get_project_id(self):
+        return self.narration.get_project_id()
 
     class Meta:
         default_permissions = ()

@@ -21,6 +21,7 @@ class Events:
         "membership": ["create", "update", "delete"],
         "narration": ["create"],
         "transcript": ["create", "update"],
+        "procedure": ["submitted"],
     }
 
     @classmethod

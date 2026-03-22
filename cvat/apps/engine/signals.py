@@ -41,6 +41,11 @@ def __save_job_handler(instance, created, raw: bool, **kwargs):
         db_task.status = status
         db_task.save(update_fields=["status", "updated_date"])
 
+    # Emit surgery-specific procedure:submitted event when a job is completed
+    if instance.state == 'completed':
+        from cvat.apps.engine.surgery_events import emit_procedure_submitted
+        emit_procedure_submitted(instance)
+
 
 @receiver(pre_save, sender=Job)
 def __enforce_job_limit(instance: Job, **kwargs):
