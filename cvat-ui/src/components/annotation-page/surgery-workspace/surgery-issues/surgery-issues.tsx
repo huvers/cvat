@@ -63,7 +63,7 @@ export default function SurgeryIssues(): JSX.Element {
         serverProxy.issues
             .get({ job_id: job.id })
             .then((data: any) => {
-                if (!cancelled) setIssues(Array.isArray(data) ? data : data.results ?? []);
+                if (!cancelled) setIssues(Array.isArray(data) ? data : []);
             })
             .catch((err: unknown) => {
                 if (!cancelled) notification.error({ message: 'Failed to load issues', description: String(err) });
@@ -91,7 +91,7 @@ export default function SurgeryIssues(): JSX.Element {
             await serverProxy.issues.create(payload);
             // Refresh
             const data: any = await serverProxy.issues.get({ job_id: job.id });
-            setIssues(Array.isArray(data) ? data : data.results ?? []);
+            setIssues(Array.isArray(data) ? data : []);
             setShowForm(false);
             setMessage('');
             setStartFrame(null);

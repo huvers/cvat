@@ -89,8 +89,8 @@ export default function TranscriptViewer(props: TranscriptViewerProps): JSX.Elem
     const [saving, setSaving] = useState(false);
 
     const jobStartFrame = job?.startFrame ?? 0;
-    // Estimate FPS from job metadata (default 30)
-    const fps = 30;
+    // Default to 60fps (surgical video standard: 50fps recorded, upsampled to 60fps)
+    const fps = 60;
 
     // Load transcripts and poll while any are pending/processing
     useEffect(() => {

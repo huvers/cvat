@@ -13,6 +13,8 @@ import Typography from 'antd/lib/typography';
 import notification from 'antd/lib/notification';
 import { SearchOutlined } from '@ant-design/icons';
 
+import serverProxy from 'cvat-core/src/server-proxy';
+
 import './styles.scss';
 
 interface JobMetrics {
@@ -144,11 +146,8 @@ export default function SurgeryQAPage(): JSX.Element {
         if (!projectId) return;
         setLoading(true);
         try {
-            const axios = (await import('axios')).default;
-            const response = await axios.get('/api/surgery-qa', {
-                params: { project_id: projectId },
-            });
-            setMetrics(response.data);
+            const data = await serverProxy.surgery.getQAMetrics(projectId);
+            setMetrics(data as ProjectMetrics);
         } catch (err: unknown) {
             notification.error({ message: 'Failed to load QA metrics', description: String(err) });
         } finally {

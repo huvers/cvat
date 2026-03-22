@@ -29,13 +29,21 @@ export default function SurgerySidebar(): JSX.Element {
     const [submitting, setSubmitting] = useState(false);
     const [exporting, setExporting] = useState(false);
 
-    const handleSubmitAndNext = useCallback(() => {
+    const handleSubmitAndNext = useCallback(async () => {
         if (!job) return;
         setSubmitting(true);
-        dispatch(finishCurrentJobAsync(() => {
+        try {
+            await dispatch(finishCurrentJobAsync(() => {
+                history.push('/my-work');
+            }));
+        } catch (err: unknown) {
+            notification.error({
+                message: 'Failed to submit job',
+                description: err instanceof Error ? err.message : String(err),
+            });
+        } finally {
             setSubmitting(false);
-            history.push('/my-work');
-        }));
+        }
     }, [dispatch, history, job]);
 
     const handleExport = useCallback(async () => {
