@@ -75,12 +75,13 @@ ____
     - Add a top-level “My Work” route showing only assigned jobs requiring surgeon action, with Start/Resume/Next.
     - Enforce restrictions via OPA policies and/or UI gating to prevent browsing other data.
 
-- [ ] Video-level classification (whole-procedure tags, case metadata)
+- [x] Video-level classification (whole-procedure tags, case metadata)
   - Leading Platform: Global classifications and project-level structures; supports bulk classification.
   - CVAT Community gap: No native video-level tag; issue #4952 calls out whole-video/range tagging.
   - Build notes:
     - Add `GlobalClassification` at the task/job level (not frame-level) stored as media metadata.
     - Display separately from timeline interval tags (e.g., procedure type, complication present, video quality).
+  - Status: `JobClassification` model (job + label, unique constraint) with migration 0101. REST API (GET/POST/DELETE /jobs/{id}/classifications). `VideoClassificationEditor` component in surgery sidebar "Case info" tab: colored tag chips with close-to-remove, label dropdown filtered to unused labels. Remaining gaps: attribute values per classification, bulk classification across jobs.
 
 ## P1 checklist (scale to 20–50 surgeons)
 
