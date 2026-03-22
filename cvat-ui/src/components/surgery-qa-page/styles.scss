@@ -1,0 +1,68 @@
+// Copyright (C) CVAT.ai Corporation
+//
+// SPDX-License-Identifier: MIT
+
+.cvat-surgery-qa-page {
+    padding: 24px 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.cvat-surgery-qa-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.cvat-surgery-qa-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.cvat-surgery-qa-spinner {
+    display: flex;
+    justify-content: center;
+    padding: 48px 0;
+}
+
+.cvat-surgery-qa-summary {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+.cvat-surgery-qa-stat {
+    flex: 1;
+    min-width: 120px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.cvat-surgery-qa-stat-value {
+    font-size: 24px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.cvat-surgery-qa-stat-label {
+    font-size: 12px;
+    color: #888;
+    text-align: center;
+}
+
+.cvat-surgery-qa-table {
+    .ant-table {
+        border-radius: 6px;
+    }
+}

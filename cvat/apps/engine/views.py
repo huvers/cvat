@@ -2065,6 +2065,16 @@ class JobViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateMo
         }
         return Response(payload)
 
+    @extend_schema(methods=['GET'], summary='Get surgery QA metrics for a job',
+        responses={'200': None})
+    @action(detail=True, methods=['GET'], url_path=r'surgery-metrics/?$',
+        serializer_class=None)
+    def surgery_metrics(self, request: ExtendedRequest, pk: int):
+        """Return coverage, intervals, issues, and completeness metrics."""
+        from cvat.apps.engine.surgery_metrics import compute_job_metrics
+        self._object: models.Job = self.get_object()
+        return Response(compute_job_metrics(self._object))
+
     @extend_schema(methods=['POST'], summary='Trigger weak labeling for a job',
         responses={'202': None})
     @action(detail=True, methods=['POST'], url_path=r'weak-label/?$',
@@ -3247,3 +3257,23 @@ class BulkIngestViewSet(viewsets.ViewSet):
             {'detail': f'Bulk ingest queued for prefix: {procedure_prefix}'},
             status=status.HTTP_202_ACCEPTED,
         )
+
+
+class SurgeryQAViewSet(viewsets.ViewSet):
+    """Surgery QA dashboard: project-level quality metrics."""
+
+    @extend_schema(
+        summary='Get surgery QA dashboard for a project',
+        parameters=[OpenApiParameter('project_id', type=int, required=True)],
+        responses={'200': None},
+    )
+    def list(self, request):
+        from cvat.apps.engine.surgery_metrics import compute_project_metrics
+        project_id = request.query_params.get('project_id')
+        if not project_id:
+            return Response(
+                {'detail': 'project_id query parameter is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        metrics = compute_project_metrics(int(project_id))
+        return Response(metrics)

@@ -474,6 +474,18 @@ function HeaderComponent(props: Props): JSX.Element {
                     Ingest
                 </Button>
                 <Button
+                    className={getButtonClassName('surgery-qa')}
+                    type='link'
+                    value='surgery-qa'
+                    href='/surgery-qa'
+                    onClick={(event: React.MouseEvent): void => {
+                        event.preventDefault();
+                        history.push('/surgery-qa');
+                    }}
+                >
+                    QA
+                </Button>
+                <Button
                     className={getButtonClassName('requests')}
                     type='link'
                     value='requests'

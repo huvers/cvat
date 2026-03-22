@@ -130,12 +130,13 @@ ____
     - Add assignment/resolution workflows and expose via API for triage dashboards.
   - Status: Extended Issue model with `end_frame` (nullable), `issue_type` (frame/interval/narration), and `narration` FK. Migration 0104. Serializers updated with validation (interval requires end_frame, narration requires narration FK). ViewSet filterable by issue_type. `SurgeryIssues` component in sidebar Issues tab: create issues by type with frame range inputs, resolve inline, color-coded by type. cvat-core `Issue` class extended with endFrame, issueType, narration properties + serialization.
 
-- [ ] Video quality + label quality metrics tailored to long videos
+- [x] Video quality + label quality metrics tailored to long videos
   - Leading Platform: Video-specific quality/validation metrics and “video health” style views.
   - CVAT Community gap: QA exists (ground truth/honeypots/consensus scores), but not a surgeon-centric long-video triage view.
   - Build notes:
     - Build a “Surgery QA Dashboard”: coverage, unlabeled intervals, phase-change density, segmentation anomalies, disagreement hotspots.
     - Optionally add derived media metrics (FPS, blur/sharpness) for triage.
+  - Status: `surgery_metrics.py` computes per-job metrics: frame coverage %, gap count, interval density per 1k frames, auto vs manual intervals, issues by type/status, transcription status, annotation completeness (4-check). `GET /jobs/{id}/surgery-metrics` for per-job. `GET /api/surgery-qa?project_id=X` for project-level with summary aggregates. `SurgeryQAPage` at `/surgery-qa`: summary stat cards (total jobs, completion %, avg coverage, open issues, intervals, fully complete) + sortable table with all jobs.
 
 - [ ] Safer consensus UX for surgeon disagreements
   - Leading Platform: Reviewers compare independent annotator outputs and choose best labels/classifications (bulk or individual).
