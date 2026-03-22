@@ -16,6 +16,7 @@ import { CombinedState } from 'reducers';
 import { finishCurrentJobAsync } from 'actions/annotation-actions';
 import serverProxy from 'cvat-core/src/server-proxy';
 
+import CopilotPanel from '../copilot-panel/copilot-panel';
 import NarrationTab from '../narration-tab/narration-tab';
 import PhaseTrackEditor from '../phase-track-editor/phase-track-editor';
 import SurgeryIssues from '../surgery-issues/surgery-issues';
@@ -69,7 +70,13 @@ export default function SurgerySidebar(): JSX.Element {
         <Layout.Sider width={420} className='cvat-surgery-sidebar'>
             <Tabs
                 className='cvat-surgery-sidebar-tabs'
+                defaultActiveKey='copilot'
                 items={[
+                    {
+                        key: 'copilot',
+                        label: 'Copilot',
+                        children: <CopilotPanel />,
+                    },
                     {
                         key: 'case-info',
                         label: 'Case info',

@@ -2065,6 +2065,17 @@ class JobViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateMo
         serializer = JobTranscriptReadSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    @extend_schema(methods=['GET'], summary='Get copilot suggestions for a job',
+        responses={'200': None})
+    @action(detail=True, methods=['GET'], url_path=r'copilot/?$',
+        serializer_class=None)
+    def copilot(self, request: ExtendedRequest, pk: int):
+        """Return LLM-powered annotation suggestions based on full job context."""
+        from cvat.apps.engine.copilot import get_copilot_suggestions
+        self._object: models.Job = self.get_object()
+        suggestions = get_copilot_suggestions(self._object)
+        return Response(suggestions)
+
     @extend_schema(methods=['GET'], summary='Export surgery annotations as JSON',
         responses={
             '200': None,

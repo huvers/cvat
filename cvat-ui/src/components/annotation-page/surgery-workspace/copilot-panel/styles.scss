@@ -1,0 +1,134 @@
+// Copyright (C) CVAT.ai Corporation
+//
+// SPDX-License-Identifier: MIT
+
+.cvat-copilot-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+// ── Progress overview ──
+
+.cvat-copilot-overview {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e8e8e8;
+}
+
+.cvat-copilot-overview-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+
+    .ant-tag {
+        margin: 0;
+        font-size: 11px;
+    }
+}
+
+.cvat-copilot-checklist {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.cvat-copilot-checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cvat-copilot-checklist-pending {
+    color: #bbb;
+}
+
+// ── Header ──
+
+.cvat-copilot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cvat-copilot-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px 0;
+}
+
+.cvat-copilot-summary {
+    font-size: 13px;
+    color: #555;
+    margin: 0 !important;
+    line-height: 1.5;
+}
+
+// ── Suggestion cards ──
+
+.cvat-copilot-suggestions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cvat-copilot-suggestion-card {
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: box-shadow 0.15s;
+
+    &:hover {
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
+}
+
+.cvat-copilot-suggestion-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cvat-copilot-suggestion-icon {
+    font-size: 14px;
+    color: #1890ff;
+}
+
+.cvat-copilot-suggestion-priority {
+    margin: 0;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+
+.cvat-copilot-suggestion-message {
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.cvat-copilot-suggestion-action {
+    align-self: flex-end;
+}
+
+// ── Complete state ──
+
+.cvat-copilot-complete {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 24px 0;
+    color: #52c41a;
+}
