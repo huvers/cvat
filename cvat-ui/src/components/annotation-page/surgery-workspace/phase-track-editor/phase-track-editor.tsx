@@ -15,6 +15,10 @@ import { CheckOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Job } from 'cvat-core-wrapper';
 import { CombinedState } from 'reducers';
 import { Source } from 'cvat-core/src/enums';
+import { ShortcutScope } from 'utils/enums';
+import { registerComponentShortcuts } from 'actions/shortcuts-actions';
+import { subKeyMap } from 'utils/component-subkeymap';
+import GlobalHotKeys from 'utils/mousetrap-react';
 import { changeFrameAsync } from 'actions/annotation-actions';
 import serverProxy from 'cvat-core/src/server-proxy';
 import { SerializedInterval } from 'cvat-core/src/server-response-types';
@@ -22,6 +26,35 @@ import { SerializedInterval } from 'cvat-core/src/server-response-types';
 import { frameToTime } from '../utils';
 
 import './styles.scss';
+
+const componentShortcuts = {
+    SET_INTERVAL_START: {
+        name: 'Set interval start',
+        description: 'Set the interval start frame to the current frame',
+        sequences: ['['],
+        scope: ShortcutScope.ANNOTATION_PAGE,
+    },
+    SET_INTERVAL_END: {
+        name: 'Set interval end',
+        description: 'Set the interval end frame to the current frame',
+        sequences: [']'],
+        scope: ShortcutScope.ANNOTATION_PAGE,
+    },
+    CREATE_INTERVAL: {
+        name: 'Create interval',
+        description: 'Create a new interval with the selected label and frame range',
+        sequences: ['enter'],
+        scope: ShortcutScope.ANNOTATION_PAGE,
+    },
+    ACCEPT_ALL_PREDICTIONS: {
+        name: 'Accept all predictions',
+        description: 'Convert all auto-predicted intervals to manual',
+        sequences: ['ctrl+shift+a'],
+        scope: ShortcutScope.ANNOTATION_PAGE,
+    },
+};
+
+registerComponentShortcuts(componentShortcuts);
 
 export default function PhaseTrackEditor(): JSX.Element {
     const job = useSelector((state: CombinedState) => state.annotation.job.instance) as Job | null | undefined;
@@ -185,11 +218,38 @@ export default function PhaseTrackEditor(): JSX.Element {
 
     const autoCount = intervals.filter((i) => i.source === 'auto' || i.source === 'semi-auto').length;
 
+    const { keyMap } = useSelector((state: CombinedState) => state.shortcuts);
+
     const labelMap = Object.fromEntries(labels.map((l) => [l.id, l]));
     const canCreate = !saving && selectedLabelId !== null && startFrame !== null && endFrame !== null;
 
+    const shortcutHandlers: Record<keyof typeof componentShortcuts, (event?: KeyboardEvent) => void> = {
+        SET_INTERVAL_START: (event) => {
+            event?.preventDefault();
+            setStartFrame(currentFrame);
+            notification.info({ message: `Start: ${frameToTime(currentFrame, jobStartFrame)}`, duration: 1 });
+        },
+        SET_INTERVAL_END: (event) => {
+            event?.preventDefault();
+            setEndFrame(currentFrame);
+            notification.info({ message: `End: ${frameToTime(currentFrame, jobStartFrame)}`, duration: 1 });
+        },
+        CREATE_INTERVAL: (event) => {
+            event?.preventDefault();
+            if (canCreate) createInterval();
+        },
+        ACCEPT_ALL_PREDICTIONS: (event) => {
+            event?.preventDefault();
+            if (autoCount > 0) acceptAllAuto();
+        },
+    };
+
     return (
         <div className='cvat-phase-track-editor'>
+            <GlobalHotKeys
+                keyMap={subKeyMap(componentShortcuts, keyMap)}
+                handlers={shortcutHandlers}
+            />
             {/* ── Creation Panel ── */}
             <div className='cvat-phase-track-create'>
                 <Select
@@ -219,9 +279,9 @@ export default function PhaseTrackEditor(): JSX.Element {
                             onChange={(v) => setStartFrame(v as number | null)}
                             size='small'
                         />
-                        <Tooltip title={`Set to current frame (${currentFrame})`}>
+                        <Tooltip title={`Set to current frame [ ${frameToTime(currentFrame, jobStartFrame)}`}>
                             <Button size='small' onClick={() => setStartFrame(currentFrame)}>
-                                {frameToTime(currentFrame, jobStartFrame)}
+                                {`[ ${frameToTime(currentFrame, jobStartFrame)}`}
                             </Button>
                         </Tooltip>
                     </div>
@@ -234,9 +294,9 @@ export default function PhaseTrackEditor(): JSX.Element {
                             onChange={(v) => setEndFrame(v as number | null)}
                             size='small'
                         />
-                        <Tooltip title={`Set to current frame (${currentFrame})`}>
+                        <Tooltip title={`Set to current frame ] ${frameToTime(currentFrame, jobStartFrame)}`}>
                             <Button size='small' onClick={() => setEndFrame(currentFrame)}>
-                                {frameToTime(currentFrame, jobStartFrame)}
+                                {`] ${frameToTime(currentFrame, jobStartFrame)}`}
                             </Button>
                         </Tooltip>
                     </div>
@@ -249,7 +309,7 @@ export default function PhaseTrackEditor(): JSX.Element {
                     onClick={createInterval}
                     block
                 >
-                    Add Interval
+                    Add Interval (Enter)
                 </Button>
                 {autoCount > 0 && (
                     <Button
