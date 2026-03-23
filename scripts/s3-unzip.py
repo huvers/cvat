@@ -75,8 +75,10 @@ def extract_zip_from_s3(bucket: str, zip_key: str, target_prefix: str, dry_run: 
         logger.info("  [DRY RUN] Would extract to %s/", target_prefix)
         return 0
 
-    # Download zip to temp file (streaming to disk for large files)
-    tmp_path = f"/tmp/{zip_key}"
+    # Download zip to temp file — use home dir to avoid tmpfs (RAM) limits
+    tmp_dir = os.environ.get("UNZIP_TMPDIR", os.path.expanduser("~/tmp"))
+    os.makedirs(tmp_dir, exist_ok=True)
+    tmp_path = os.path.join(tmp_dir, os.path.basename(zip_key))
     logger.info("  Downloading %s to %s...", zip_key, tmp_path)
     start = time.time()
     s3.download_file(bucket, zip_key, tmp_path)
