@@ -3435,6 +3435,20 @@ class DatasetViewSet(viewsets.ModelViewSet):
             status=status.HTTP_202_ACCEPTED,
         )
 
+    @extend_schema(summary='Process ingested episodes (download video, build chunks, evict source)')
+    @action(detail=True, methods=['POST'], url_path='process')
+    def process(self, request, pk=None):
+        dataset = self.get_object()
+        from cvat.apps.engine.bulk_ingest import enqueue_dataset_processing
+        result = enqueue_dataset_processing(dataset.id)
+        return Response(
+            {
+                'detail': f'Enqueued {result["enqueued"]} episodes for processing',
+                **result,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
     @extend_schema(summary='List episodes in a dataset')
     @action(detail=True, methods=['GET'], url_path='episodes')
     def episodes(self, request, pk=None):

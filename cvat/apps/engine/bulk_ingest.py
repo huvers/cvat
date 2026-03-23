@@ -14,6 +14,7 @@ auto-classified with the procedure type, and optionally weak-labeled.
 
 import logging
 import re
+import shutil
 from dataclasses import dataclass
 
 from django.conf import settings
@@ -49,6 +50,30 @@ class DiscoveredEpisode:
     chunk: str
 
 
+def _list_files_recursive(storage, prefix: str) -> list[dict]:
+    """
+    Walk an S3 prefix recursively, returning all REG entries.
+
+    ``storage.list_files`` uses a ``/`` delimiter, so it only returns one
+    directory level at a time.  We recurse into every DIR entry until we
+    reach leaf files.
+    """
+    entries = storage.list_files(prefix=prefix)
+    files: list[dict] = []
+    for entry in entries:
+        if entry.get("type") == "DIR":
+            dir_name = entry["name"].rstrip("/")
+            child_prefix = f"{prefix}{dir_name}/"
+            files.extend(_list_files_recursive(storage, child_prefix))
+        else:
+            # Reconstruct the full S3 key so callers don't need to know
+            # about prefix stripping done inside list_files.
+            entry_name = entry if isinstance(entry, str) else entry.get("name", "")
+            full_key = f"{prefix}{entry_name}" if not entry_name.startswith(prefix) else entry_name
+            files.append({"name": full_key, "type": "REG"})
+    return files
+
+
 def discover_episodes(cloud_storage: CloudStorage, s3_prefix: str) -> list[DiscoveredEpisode]:
     """
     Scan an S3 prefix for LeRobot-format episode videos.
@@ -60,7 +85,7 @@ def discover_episodes(cloud_storage: CloudStorage, s3_prefix: str) -> list[Disco
     prefix = f"{s3_prefix}/videos/"
 
     logger.info("Scanning s3://%s/%s for episodes", cloud_storage.resource, prefix)
-    files = storage.list_files(prefix=prefix)
+    files = _list_files_recursive(storage, prefix)
 
     episodes = []
     for entry in files:
@@ -289,6 +314,17 @@ def run_bulk_ingest(
         except Exception:
             logger.exception("Failed to enqueue weak labeling for dataset %d", dataset.id)
 
+    # Enqueue video processing for newly created tasks
+    if created > 0:
+        try:
+            processing = enqueue_dataset_processing(dataset.id)
+            logger.info(
+                "Enqueued %d episodes for video processing",
+                processing["enqueued"],
+            )
+        except Exception:
+            logger.exception("Failed to enqueue video processing for dataset %d", dataset.id)
+
     return {
         "dataset_id": dataset.id,
         "created": created,
@@ -296,3 +332,129 @@ def run_bulk_ingest(
         "errors": errors,
         "sync": sync_result,
     }
+
+
+def _cleanup_raw_video(db_data: Data) -> None:
+    """Delete downloaded source video, keeping manifest and chunks."""
+    raw_dir = db_data.get_upload_dirname()
+    if not raw_dir.exists():
+        return
+    for f in raw_dir.iterdir():
+        if f.name == "manifest.jsonl":
+            continue
+        if f.is_file():
+            size_mb = f.stat().st_size / (1024 * 1024)
+            f.unlink()
+            logger.info("Evicted raw file: %s (%.0f MB)", f.name, size_mb)
+        elif f.is_dir():
+            shutil.rmtree(f)
+
+
+def process_episode_data(episode_id: int) -> dict:
+    """
+    Process a single episode's video through CVAT's create_thread pipeline.
+
+    Downloads video from S3, extracts frames, builds static chunks on disk,
+    then deletes the source video to reclaim space (process-and-evict).
+    The video remains streamable from the pre-built chunks.
+    """
+    from cvat.apps.engine.task import create_thread
+
+    try:
+        episode = DatasetEpisode.objects.select_related("task__data").get(id=episode_id)
+    except DatasetEpisode.DoesNotExist:
+        return {"error": f"Episode {episode_id} not found"}
+
+    if not episode.task_id:
+        return {"error": "Episode has no task"}
+
+    db_task = episode.task
+    db_data = db_task.data
+
+    # Skip if already processed (size > 0 means frames were extracted)
+    if db_data.size and db_data.size > 0:
+        logger.info("Episode %d already processed (task %d, %d frames)", episode_id, db_task.id, db_data.size)
+        return {"status": "already_processed", "task_id": db_task.id}
+
+    logger.info(
+        "Processing episode %d: task %d, s3_key=%s",
+        episode_id, db_task.id, episode.s3_key,
+    )
+
+    # Delete placeholder segments/jobs — create_thread will create real ones
+    db_task.segment_set.all().delete()
+
+    # Build the data dict that create_thread expects
+    data_dict = {
+        "chunk_size": None,
+        "image_quality": 70,
+        "start_frame": 0,
+        "stop_frame": 0,
+        "frame_filter": "",
+        "sorting_method": "lexicographical",
+        "storage_method": "file_system",
+        "storage": "cloud_storage",
+        "client_files": [],
+        "server_files": [episode.s3_key],
+        "remote_files": [],
+        "server_files_exclude": [],
+        "use_zip_chunks": False,
+        "use_cache": False,
+        "copy_data": False,
+        "filename_pattern": None,
+        "job_file_mapping": None,
+        "validation_params": {},
+    }
+
+    try:
+        create_thread(db_task.pk, data_dict)
+    except Exception:
+        logger.exception("create_thread failed for task %d", db_task.id)
+        raise
+
+    # Refresh to get updated size
+    db_data.refresh_from_db()
+
+    # Evict the downloaded source video — chunks on disk are sufficient
+    _cleanup_raw_video(db_data)
+
+    logger.info(
+        "Episode %d processed: task %d, %d frames, chunks on disk",
+        episode_id, db_task.id, db_data.size,
+    )
+    return {"status": "processed", "task_id": db_task.id, "frames": db_data.size}
+
+
+def enqueue_dataset_processing(dataset_id: int) -> dict:
+    """Enqueue video processing jobs for all ingested but unprocessed episodes."""
+    import django_rq
+
+    dataset = Dataset.objects.get(id=dataset_id)
+
+    episodes = (
+        DatasetEpisode.objects
+        .filter(dataset=dataset, status=EpisodeStatus.INGESTED, task__isnull=False)
+        .select_related("task__data")
+    )
+
+    queue = django_rq.get_queue(settings.CVAT_QUEUES.IMPORT_DATA.value)
+    enqueued = 0
+    skipped = 0
+
+    for ep in episodes:
+        if ep.task.data.size and ep.task.data.size > 0:
+            skipped += 1
+            continue
+
+        queue.enqueue(
+            "cvat.apps.engine.bulk_ingest.process_episode_data",
+            episode_id=ep.id,
+            job_timeout=3600,
+        )
+        enqueued += 1
+
+    logger.info(
+        "Dataset %d: enqueued %d episodes for processing, skipped %d already processed",
+        dataset_id, enqueued, skipped,
+    )
+    return {"enqueued": enqueued, "skipped": skipped}

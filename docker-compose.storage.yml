@@ -1,0 +1,59 @@
+# Storage overlay: bind-mount cvat_data to /big_drive, enable static chunk cache.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.storage.yml up -d
+#
+# Before first use, migrate existing data:
+#   sudo mkdir -p /mnt/big_drive/cvat_data
+#   sudo rsync -a /var/lib/docker/volumes/cvat_cvat_data/_data/ /mnt/big_drive/cvat_data/
+#   sudo chown -R 1000:1000 /mnt/big_drive/cvat_data
+
+x-storage-env: &storage-env
+  CVAT_ALLOW_STATIC_CACHE: "true"
+
+services:
+  cvat_server:
+    environment:
+      <<: *storage-env
+    volumes:
+      - /mnt/big_drive/cvat_data:/home/django/data
+
+  cvat_worker_import:
+    environment:
+      <<: *storage-env
+    volumes:
+      - /mnt/big_drive/cvat_data:/home/django/data
+
+  cvat_worker_export:
+    environment:
+      <<: *storage-env
+    volumes:
+      - /mnt/big_drive/cvat_data:/home/django/data
+
+  cvat_worker_annotation:
+    environment:
+      <<: *storage-env
+    volumes:
+      - /mnt/big_drive/cvat_data:/home/django/data
+
+  cvat_worker_quality_reports:
+    environment:
+      <<: *storage-env
+    volumes:
+      - /mnt/big_drive/cvat_data:/home/django/data
+
+  cvat_worker_consensus:
+    environment:
+      <<: *storage-env
+    volumes:
+      - /mnt/big_drive/cvat_data:/home/django/data
+
+  cvat_worker_utils:
+    environment:
+      <<: *storage-env
+    volumes:
+      - /mnt/big_drive/cvat_data:/home/django/data
+
+  cvat_worker_chunks:
+    environment:
+      <<: *storage-env
+    volumes:
+      - /mnt/big_drive/cvat_data:/home/django/data
