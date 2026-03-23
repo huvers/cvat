@@ -111,6 +111,31 @@ class ExportableResourceExtension:
         resource_data["destination"] = self.location
 
 
+class SurgeryPermission(OpenPolicyAgentPermission):
+    """Simple permission for surgery-specific viewsets: allows any authenticated user."""
+
+    class Scopes(StrEnum):
+        ALL = "all"
+
+    @classmethod
+    def create(cls, request, view, obj, iam_context=None):
+        # Allow all authenticated users — no OPA check needed
+        return []
+
+    @classmethod
+    def _get_scopes(cls, request, view, obj):
+        return [cls.Scopes.ALL]
+
+    def __init__(self, **kwargs):
+        self.scope = kwargs.get("scope", "all")
+
+    def check_access(self):
+        return namedtuple("Result", ["allow"])(True)
+
+    def filter(self, queryset):
+        return queryset
+
+
 class ServerPermission(OpenPolicyAgentPermission):
     class Scopes(StrEnum):
         VIEW = "view"

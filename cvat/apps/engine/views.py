@@ -98,6 +98,7 @@ from cvat.apps.engine.permissions import (
     LabelPermission,
     ProjectPermission,
     ServerPermission,
+    SurgeryPermission,
     TaskPermission,
     UserPermission,
     get_iam_context,
@@ -842,6 +843,7 @@ class _JobDataGetter(_DataGetter):
 
 class OntologyVersionViewSet(viewsets.ViewSet):
     """Ontology version history for projects."""
+    iam_permission_class = SurgeryPermission
 
     @extend_schema(
         summary='List ontology versions for a project',
@@ -3280,6 +3282,7 @@ def rq_exception_handler(rq_job: RQJob, exc_type: type[Exception], exc_value: Ex
 
 class SurgeryModelViewSet(viewsets.ModelViewSet):
     """CRUD for the surgery model registry (maps procedure types to AI models)."""
+    iam_permission_class = SurgeryPermission
     queryset = models.SurgeryModel.objects.all().order_by('procedure_type', 'name')
     serializer_class = SurgeryModelSerializer
 
@@ -3321,6 +3324,7 @@ class SurgeryModelViewSet(viewsets.ModelViewSet):
 
 class BulkIngestViewSet(viewsets.ViewSet):
     """Bulk ingest episodes from S3 cloud storage in LeRobot format."""
+    iam_permission_class = SurgeryPermission
 
     @extend_schema(
         summary='Start bulk ingest from S3',
@@ -3370,6 +3374,7 @@ class BulkIngestViewSet(viewsets.ViewSet):
 
 class SurgeryQAViewSet(viewsets.ViewSet):
     """Surgery QA dashboard: project-level quality metrics."""
+    iam_permission_class = SurgeryPermission
 
     @extend_schema(
         summary='Get surgery QA dashboard for a project',
@@ -3390,6 +3395,7 @@ class SurgeryQAViewSet(viewsets.ViewSet):
 
 class DatasetViewSet(viewsets.ModelViewSet):
     """CRUD for surgery datasets + sync and ingest actions."""
+    iam_permission_class = SurgeryPermission
     queryset = models.Dataset.objects.all().order_by('-created_date')
     serializer_class = None  # set dynamically
 
