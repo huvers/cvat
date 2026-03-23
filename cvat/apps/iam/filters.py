@@ -34,6 +34,11 @@ ORGANIZATION_OPEN_API_PARAMETERS = [
 
 
 class OrganizationFilterBackend(BaseFilterBackend):
+    def _get_view_organization_field(self, view):
+        return getattr(view, "iam_organization_field", None)
+
+    def _is_detail_view(self, view):
+        return getattr(view, "detail", False)
 
     def _parameter_is_provided(self, request):
         for parameter in ORGANIZATION_OPEN_API_PARAMETERS:
@@ -66,10 +71,12 @@ class OrganizationFilterBackend(BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         # Filter works only for "list" requests and allows to return
         # only non-organization objects if org isn't specified
+        organization_field = self._get_view_organization_field(view)
+        is_detail_view = self._is_detail_view(view)
 
         if (
-            view.detail
-            or not view.iam_organization_field
+            is_detail_view
+            or not organization_field
             or
             # FIXME:  It should be handled in another way. For example, if we try to get information for a specific job
             # and org isn't specified, we need to return the full list of labels, issues, comments.
@@ -95,14 +102,14 @@ class OrganizationFilterBackend(BaseFilterBackend):
 
         if visibility:
             org_id = visibility.pop("organization")
-            query = self._construct_filter_query(view.iam_organization_field, org_id)
+            query = self._construct_filter_query(organization_field, org_id)
 
             return queryset.filter(query).distinct()
 
         return queryset
 
     def get_schema_operation_parameters(self, view):
-        if not view.iam_organization_field or view.detail:
+        if not self._get_view_organization_field(view) or self._is_detail_view(view):
             return []
 
         parameters = []
