@@ -174,8 +174,11 @@ class JsonLogicFilter(filters.BaseFilterBackend):
             return self._build_Q(args, lookup_fields, parent_op=op)
         elif op == "var":
             return Q(**{args + "__isnull": False})
-        elif op in ["==", "<", ">", "<=", ">="] and len(args) == 2:
+        elif op in ["==", "!=", "<", ">", "<=", ">="] and len(args) == 2:
             var = _get_lookup_field(args[0]["var"])
+            if op == "!=":
+                return ~Q(**{var: args[1]})
+
             q_var = var + {"==": "", "<": "__lt", "<=": "__lte", ">": "__gt", ">=": "__gte"}[op]
             return Q(**{q_var: args[1]})
         elif op == "in":
