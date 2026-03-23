@@ -1011,7 +1011,7 @@ class RemoteFile(models.Model):
 
 class JobNarration(TimestampedModel):
     job = models.ForeignKey(
-        Job, on_delete=models.CASCADE,
+        "Job", on_delete=models.CASCADE,
         related_name="narrations", related_query_name="narration",
     )
     owner = models.ForeignKey(
@@ -1039,10 +1039,10 @@ class JobNarration(TimestampedModel):
 
 class JobClassification(TimestampedModel):
     job = models.ForeignKey(
-        Job, on_delete=models.CASCADE,
+        "Job", on_delete=models.CASCADE,
         related_name="classifications", related_query_name="classification",
     )
-    label = models.ForeignKey(Label, on_delete=models.CASCADE)
+    label = models.ForeignKey("Label", on_delete=models.CASCADE)
     owner = models.ForeignKey(
         User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )

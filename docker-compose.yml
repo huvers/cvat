@@ -73,11 +73,15 @@ services:
     # its healthcheck command (1s), which makes the problem more likely to manifest.
     # Use a separate init process as a workaround.
     init: true
+    user: "0:0"
     volumes:
-      - cvat_cache_db:/var/lib/kvrocks
+      - cvat_cache_db:/var/lib/kvrocks/db
+      - ./components/kvrocks/kvrocks.conf:/etc/kvrocks/kvrocks.conf:ro
     networks:
       - cvat
+    entrypoint: ["kvrocks"]
     command: [
+      "-c", "/etc/kvrocks/kvrocks.conf",
       "--compact-cron", "0 3 * * *",
       ]
 
