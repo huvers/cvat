@@ -26,6 +26,9 @@ services:
       CVAT_DEBUG_PORT: '9090'
       # If 'yes', wait for a debugger connection on startup
       CVAT_DEBUG_WAIT: '${CVAT_DEBUG_WAIT_CLIENT:-no}'
+      # Local dev machines can be space-constrained; don't fail the UI health probe
+      # on a warning-only disk threshold unless the user opts into a stricter value.
+      CVAT_HEALTH_DISK_USAGE_MAX: '${CVAT_HEALTH_DISK_USAGE_MAX:-100}'
       COVERAGE_PROCESS_START:
     ports:
       - '127.0.0.1:9090:9090'
