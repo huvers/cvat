@@ -752,30 +752,48 @@ class MediaCache:
 
         if hasattr(db_data, "video"):
             source_path = db_data.get_raw_data_dirname() / db_data.video.path
+            if os.path.isfile(source_path):
+                manifest_path = db_data.get_manifest_path()
+                reader = VideoReaderWithManifest(
+                    manifest_path=manifest_path,
+                    source_path=source_path,
+                    allow_threading=False,
+                )
+                if not os.path.isfile(manifest_path):
+                    try:
+                        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+                        reader.manifest.link(source_path, force=True)
+                        reader.manifest.create()
+                    except Exception as e:
+                        slogger.task[db_task.id].warning(
+                            f"Failed to create video manifest: {e}", exc_info=True
+                        )
+                        reader = None
 
-            manifest_path = db_data.get_manifest_path()
-            reader = VideoReaderWithManifest(
-                manifest_path=manifest_path,
-                source_path=source_path,
-                allow_threading=False,
-            )
-            if not os.path.isfile(manifest_path):
-                try:
-                    reader.manifest.link(source_path, force=True)
-                    reader.manifest.create()
-                except Exception as e:
-                    slogger.task[db_task.id].warning(
-                        f"Failed to create video manifest: {e}", exc_info=True
+                if reader:
+                    for frame in reader.iterate_frames(frame_filter=frame_ids):
+                        yield (frame, None)
+                else:
+                    reader = VideoReader([source_path], allow_threading=False)
+
+                    yield from reader.iterate_frames(frame_filter=frame_ids)
+            elif db_data.cloud_storage_id:
+                server_file = models.ServerFile.objects.filter(data=db_data).first()
+                cloud_source_path = server_file.file if server_file else db_data.video.path
+                cloud_storage_instance = db_storage_to_storage_instance(db_data.cloud_storage)
+
+                with ExitStack() as es:
+                    tmp_dir = Path(es.enter_context(tempfile.TemporaryDirectory(prefix="cvat")))
+                    cloud_storage_instance.bulk_download_to_dir(
+                        files=[PurePath(cloud_source_path)],
+                        upload_dir=tmp_dir,
                     )
-                    reader = None
 
-            if reader:
-                for frame in reader.iterate_frames(frame_filter=frame_ids):
-                    yield (frame, None)
+                    fallback_source_path = tmp_dir / cloud_source_path
+                    reader = VideoReader([fallback_source_path], allow_threading=False)
+                    yield from reader.iterate_frames(frame_filter=frame_ids)
             else:
-                reader = VideoReader([source_path], allow_threading=False)
-
-                yield from reader.iterate_frames(frame_filter=frame_ids)
+                raise FileNotFoundError(source_path)
         else:
             yield from MediaCache.read_raw_images(db_task, frame_ids)
 

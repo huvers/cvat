@@ -490,10 +490,10 @@ class SegmentFrameProvider(IFrameProvider):
 
             def make_loader(quality: models.FrameQuality) -> _ChunkLoader:
                 chunk_type = db_data.get_chunk_type(quality)
-                return _FileChunkLoader(
+                return _BufferChunkLoader(
                     reader_factory=self._READER_FACTORIES[chunk_type],
-                    get_chunk_path_callback=lambda chunk_idx: db_data.get_static_segment_chunk_path(
-                        chunk_idx, segment_id=db_segment.id, quality=quality
+                    get_chunk_callback=lambda chunk_idx: self._read_or_rebuild_static_chunk(
+                        chunk_idx, quality=quality
                     ),
                 )
 
@@ -558,6 +558,30 @@ class SegmentFrameProvider(IFrameProvider):
         cache = MediaCache()
         preview, mime = cache.get_or_set_segment_preview(self._db_segment)
         return DataWithMeta[BytesIO](preview, mime=mime)
+
+    def _read_or_rebuild_static_chunk(
+        self, chunk_number: int, *, quality: models.FrameQuality
+    ) -> DataWithMime:
+        db_data = self._db_segment.task.require_data()
+        chunk_path = db_data.get_static_segment_chunk_path(
+            chunk_number, segment_id=self._db_segment.id, quality=quality
+        )
+
+        try:
+            with open(chunk_path, "rb") as f:
+                return io.BytesIO(f.read()), mimetypes.guess_type(chunk_path)[0]
+        except FileNotFoundError:
+            cache = MediaCache()
+            chunk, mime = cache.prepare_segment_chunk(
+                self._db_segment, chunk_number, quality=quality
+            )
+
+            chunk_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(chunk_path, "wb") as f:
+                f.write(chunk.getbuffer())
+
+            chunk.seek(0)
+            return chunk, mime
 
     def get_chunk(
         self, chunk_number: int, *, quality: models.FrameQuality = models.FrameQuality.ORIGINAL
