@@ -13,11 +13,10 @@ structured, actionable suggestions.
 
 import json
 import logging
-import time
 
 import requests
-from django.conf import settings
 
+from cvat.apps.engine.llm import get_llm_request_settings
 from cvat.apps.engine.models import (
     Job,
     JobClassification,
@@ -28,9 +27,6 @@ from cvat.apps.engine.models import (
 from cvat.apps.engine.surgery_metrics import compute_job_metrics
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_LLM_URL = "http://localhost:8000/v1/chat/completions"
-DEFAULT_LLM_MODEL = "meta/llama-3.1-8b-instruct"
 
 COPILOT_SYSTEM_PROMPT = """\
 You are a surgical annotation copilot embedded in a video annotation platform.
@@ -204,10 +200,11 @@ def get_copilot_suggestions(job: Job) -> dict:
 
     user_message = json.dumps(context, indent=2)
 
-    llm_url = getattr(settings, "COPILOT_LLM_URL",
-                       getattr(settings, "TRANSCRIPTION_LLM_URL", DEFAULT_LLM_URL))
-    llm_model = getattr(settings, "COPILOT_LLM_MODEL",
-                         getattr(settings, "TRANSCRIPTION_LLM_MODEL", DEFAULT_LLM_MODEL))
+    llm_url, llm_model, llm_headers = get_llm_request_settings(
+        url_setting="COPILOT_LLM_URL",
+        model_setting="COPILOT_LLM_MODEL",
+        api_key_setting="COPILOT_LLM_API_KEY",
+    )
 
     payload = {
         "model": llm_model,
@@ -221,7 +218,12 @@ def get_copilot_suggestions(job: Job) -> dict:
     }
 
     try:
-        response = requests.post(llm_url, json=payload, timeout=(10, 60))
+        response = requests.post(
+            llm_url,
+            json=payload,
+            headers=llm_headers or None,
+            timeout=(10, 60),
+        )
         response.raise_for_status()
         data = response.json()
         content = data["choices"][0]["message"]["content"]

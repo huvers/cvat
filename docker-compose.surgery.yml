@@ -13,10 +13,10 @@
 x-surgery-env: &surgery-env
   # Transcription pipeline
   TRANSCRIPTION_ASR_URL: http://parakeet:8888/asr
-  TRANSCRIPTION_LLM_URL: ${LLM_API_URL:-http://llm:8080/v1/chat/completions}
+  TRANSCRIPTION_LLM_URL: ${LLM_API_URL:-http://llm:8000/v1/chat/completions}
   TRANSCRIPTION_LLM_MODEL: ${LLM_MODEL:-default}
   # Copilot
-  COPILOT_LLM_URL: ${LLM_API_URL:-http://llm:8080/v1/chat/completions}
+  COPILOT_LLM_URL: ${LLM_API_URL:-http://llm:8000/v1/chat/completions}
   COPILOT_LLM_MODEL: ${LLM_MODEL:-default}
 
 services:

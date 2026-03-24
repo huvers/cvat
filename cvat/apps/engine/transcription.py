@@ -18,8 +18,9 @@ import os
 import time
 
 import requests
-from django.conf import settings
 
+from cvat.apps.engine.llm import DEFAULT_LLM_MODEL, DEFAULT_LLM_URL, get_llm_request_settings
+from django.conf import settings
 from cvat.apps.engine.models import (
     JobClassification,
     JobNarration,
@@ -32,9 +33,6 @@ logger = logging.getLogger(__name__)
 # ── Defaults ─────────────────────────────────────────────────────────────────
 
 DEFAULT_ASR_URL = "http://localhost:8888/asr"
-DEFAULT_LLM_URL = "http://localhost:8000/v1/chat/completions"
-DEFAULT_LLM_MODEL = "meta/llama-3.1-8b-instruct"
-
 MAX_RETRIES = 3
 RETRY_BACKOFF = 5  # seconds, doubles each retry
 
@@ -125,8 +123,11 @@ def _run_llm_correction(raw_text: str, context: str) -> str:
     if not raw_text.strip():
         return raw_text  # Nothing to correct
 
-    llm_url = getattr(settings, "TRANSCRIPTION_LLM_URL", DEFAULT_LLM_URL)
-    llm_model = getattr(settings, "TRANSCRIPTION_LLM_MODEL", DEFAULT_LLM_MODEL)
+    llm_url, llm_model, llm_headers = get_llm_request_settings(
+        url_setting="TRANSCRIPTION_LLM_URL",
+        model_setting="TRANSCRIPTION_LLM_MODEL",
+        api_key_setting="TRANSCRIPTION_LLM_API_KEY",
+    )
 
     user_message = raw_text
     if context:
@@ -143,7 +144,12 @@ def _run_llm_correction(raw_text: str, context: str) -> str:
     }
 
     def _do_request():
-        response = requests.post(llm_url, json=payload, timeout=(10, 120))
+        response = requests.post(
+            llm_url,
+            json=payload,
+            headers=llm_headers or None,
+            timeout=(10, 120),
+        )
         response.raise_for_status()
         return response.json()
 

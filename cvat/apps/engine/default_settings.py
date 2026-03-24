@@ -110,3 +110,19 @@ DEFAULT_DB_BULK_CREATE_BATCH_SIZE = int(os.getenv("CVAT_DEFAULT_DB_BULK_CREATE_B
 DEFAULT_DB_ANNO_CHUNK_SIZE = int(os.getenv("CVAT_DEFAULT_DB_ANNO_CHUNK_SIZE", 2000))
 
 MAX_JOBS_PER_TASK = int(os.getenv("CVAT_MAX_JOBS_PER_TASK", 5_000))
+
+LLM_API_URL = os.getenv("LLM_API_URL", "")
+LLM_MODEL = os.getenv("LLM_MODEL", "")
+LLM_API_KEY = os.getenv("LLM_API_KEY", "")
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
+_default_llm_api_key = LLM_API_KEY or NVIDIA_API_KEY or OPENAI_API_KEY
+
+COPILOT_LLM_URL = os.getenv("COPILOT_LLM_URL", LLM_API_URL) or "http://localhost:8000/v1/chat/completions"
+COPILOT_LLM_MODEL = os.getenv("COPILOT_LLM_MODEL", LLM_MODEL) or "meta/llama-3.1-8b-instruct"
+COPILOT_LLM_API_KEY = os.getenv("COPILOT_LLM_API_KEY", _default_llm_api_key)
+
+TRANSCRIPTION_LLM_URL = os.getenv("TRANSCRIPTION_LLM_URL", LLM_API_URL) or "http://localhost:8000/v1/chat/completions"
+TRANSCRIPTION_LLM_MODEL = os.getenv("TRANSCRIPTION_LLM_MODEL", LLM_MODEL) or "meta/llama-3.1-8b-instruct"
+TRANSCRIPTION_LLM_API_KEY = os.getenv("TRANSCRIPTION_LLM_API_KEY", _default_llm_api_key)

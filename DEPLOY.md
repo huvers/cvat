@@ -62,17 +62,17 @@ export OPENAI_API_KEY=sk-...
 ./deploy-surgery.sh
 ```
 
-### Option C: NVIDIA NIM
+### Option C: NVIDIA Inference API for Copilot
 
-Best for NVIDIA GPU Cloud users.
+Best when you want Copilot to use NVIDIA's hosted OpenAI-compatible endpoint.
 
 ```bash
 # Edit .env
-LLM_API_URL=https://integrate.api.nvidia.com/v1/chat/completions
-LLM_MODEL=meta/llama-3.1-8b-instruct
+COPILOT_LLM_URL=https://inference-api.nvidia.com/v1/chat/completions
+COPILOT_LLM_MODEL=azure/openai/gpt-5.4
 
 # Set your API key
-export NVIDIA_API_KEY=nvapi-...
+NVIDIA_API_KEY=nvapi-...
 
 # Deploy
 ./deploy-surgery.sh
