@@ -1,13 +1,20 @@
 .cvat-surgery-sidebar {
     background: linear-gradient(180deg, #f7f9fc 0%, #ffffff 18%);
     border-left: 1px solid #d8e0e8;
-    display: flex;
-    flex-direction: column;
     min-width: 0;
     min-height: 0;
 
+    > .ant-layout-sider-children {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+    }
+
     .cvat-surgery-sidebar-tabs {
-        flex: 1;
+        flex: 1 1 0;
+        height: 0;
         min-width: 0;
         min-height: 0;
         display: flex;
@@ -78,6 +85,7 @@
 
         .ant-tabs-content-holder {
             flex: 1;
+            height: 0;
             min-height: 0;
             overflow: hidden;
             background: linear-gradient(180deg, #fcf7ef 0%, #ffffff 84%);
