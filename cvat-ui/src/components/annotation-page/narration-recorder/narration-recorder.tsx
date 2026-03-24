@@ -2,6 +2,7 @@ import './styles.scss';
 import React, {
     useCallback, useEffect, useRef, useState,
 } from 'react';
+import Alert from 'antd/lib/alert';
 import Button from 'antd/lib/button';
 import Space from 'antd/lib/space';
 import Typography from 'antd/lib/typography';
@@ -15,6 +16,44 @@ type RecorderStatus = 'idle' | 'recording' | 'recorded' | 'uploading';
 
 interface Props {
     onUploadSuccess?: () => void;
+}
+
+interface RecorderSupportState {
+    supported: boolean;
+    message: string;
+    description: string;
+}
+
+function getRecorderSupportState(): RecorderSupportState {
+    if (!window.isSecureContext) {
+        return {
+            supported: false,
+            message: 'Microphone access requires HTTPS or localhost',
+            description: `This page is loaded from ${window.location.origin}. Browsers block audio capture on plain HTTP for non-localhost origins.`,
+        };
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+        return {
+            supported: false,
+            message: 'Audio recording is not available in this browser',
+            description: 'The browser does not expose navigator.mediaDevices.getUserMedia().',
+        };
+    }
+
+    if (typeof MediaRecorder === 'undefined') {
+        return {
+            supported: false,
+            message: 'Audio recording is not available in this browser',
+            description: 'The browser does not expose MediaRecorder.',
+        };
+    }
+
+    return {
+        supported: true,
+        message: '',
+        description: '',
+    };
 }
 
 export default function NarrationRecorder(props: Props): JSX.Element {
@@ -31,6 +70,7 @@ export default function NarrationRecorder(props: Props): JSX.Element {
     const streamRef = useRef<MediaStream | null>(null);
     const startFrameRef = useRef<number | null>(null);
     const startWallclockRef = useRef<string | null>(null);
+    const recorderSupport = getRecorderSupportState();
 
     const cleanup = useCallback((): void => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -63,10 +103,10 @@ export default function NarrationRecorder(props: Props): JSX.Element {
             return;
         }
 
-        if (!navigator.mediaDevices?.getUserMedia) {
+        if (!recorderSupport.supported) {
             notification.error({
-                message: 'Audio recording is not supported',
-                description: 'Your browser does not support getUserMedia().',
+                message: recorderSupport.message,
+                description: recorderSupport.description,
             });
             return;
         }
@@ -116,7 +156,7 @@ export default function NarrationRecorder(props: Props): JSX.Element {
             cleanup();
             setStatus('idle');
         }
-    }, [cleanup, audioURL, frameNumber, status]);
+    }, [cleanup, audioURL, frameNumber, recorderSupport, status]);
 
     const stopRecording = useCallback((): void => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -161,8 +201,31 @@ export default function NarrationRecorder(props: Props): JSX.Element {
                     {job ? `Job #${job.id}` : 'Job is not loaded'}
                 </Typography.Text>
 
+                {!recorderSupport.supported ? (
+                    <Alert
+                        className='cvat-narration-recorder-warning'
+                        showIcon
+                        type='warning'
+                        message={recorderSupport.message}
+                        description={(
+                            <Space direction='vertical' size={4}>
+                                <Typography.Text type='secondary'>
+                                    {recorderSupport.description}
+                                </Typography.Text>
+                                <Typography.Text type='secondary'>
+                                    Open CVAT through HTTPS, or through a localhost tunnel on your laptop, to enable recording.
+                                </Typography.Text>
+                            </Space>
+                        )}
+                    />
+                ) : null}
+
                 <Space wrap>
-                    <Button type='primary' onClick={startRecording} disabled={!job || status === 'recording' || status === 'uploading'}>
+                    <Button
+                        type='primary'
+                        onClick={startRecording}
+                        disabled={!job || !recorderSupport.supported || status === 'recording' || status === 'uploading'}
+                    >
                         Record
                     </Button>
                     <Button onClick={stopRecording} disabled={status !== 'recording'}>

@@ -1,8 +1,11 @@
 .cvat-narration-recorder {
     width: 100%;
 
+    .cvat-narration-recorder-warning {
+        margin-bottom: 4px;
+    }
+
     .cvat-narration-recorder-audio {
         width: 100%;
     }
 }
-
