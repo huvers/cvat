@@ -1,16 +1,108 @@
 .cvat-surgery-sidebar {
-    background: #fff;
-    border-left: 1px solid #f0f0f0;
+    background: linear-gradient(180deg, #f7f9fc 0%, #ffffff 18%);
+    border-left: 1px solid #d8e0e8;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    min-height: 0;
 
     .cvat-surgery-sidebar-tabs {
         flex: 1;
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
         overflow: hidden;
 
+        > .ant-tabs-nav {
+            margin: 0;
+            padding: 12px 12px 0;
+            background: linear-gradient(180deg, #0b2239 0%, #0f3656 100%);
+            border-bottom: 1px solid #163f61;
+            box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+            flex-shrink: 0;
+        }
+
+        > .ant-tabs-nav .ant-tabs-nav-wrap {
+            overflow-x: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+        }
+
+        > .ant-tabs-nav .ant-tabs-nav-wrap::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        > .ant-tabs-nav .ant-tabs-nav-wrap::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.28);
+            border-radius: 999px;
+        }
+
+        > .ant-tabs-nav .ant-tabs-nav-list {
+            gap: 6px;
+            padding-bottom: 10px;
+        }
+
+        > .ant-tabs-nav .ant-tabs-tab {
+            margin: 0;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.78);
+            transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        > .ant-tabs-nav .ant-tabs-tab .ant-tabs-tab-btn {
+            color: inherit;
+            font-weight: 500;
+        }
+
+        > .ant-tabs-nav .ant-tabs-tab:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+        }
+
+        > .ant-tabs-nav .ant-tabs-tab-active {
+            background: #f8fbff;
+            color: #12324d;
+            box-shadow: 0 10px 22px rgba(3, 17, 29, 0.2);
+        }
+
+        > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-btn {
+            color: inherit;
+        }
+
+        > .ant-tabs-nav .ant-tabs-ink-bar {
+            display: none;
+        }
+
         .ant-tabs-content-holder {
-            padding: 12px;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            background: linear-gradient(180deg, #fcf7ef 0%, #ffffff 84%);
+        }
+
+        .ant-tabs-content,
+        .ant-tabs-tabpane,
+        .ant-tabs-tabpane-active {
+            height: 100%;
+        }
+
+        .ant-tabs-tabpane {
+            padding: 12px 12px 20px;
             overflow-y: auto;
+            scrollbar-gutter: stable;
+        }
+
+        .ant-tabs-tabpane::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .ant-tabs-tabpane::-webkit-scrollbar-thumb {
+            background: #c7d1dc;
+            border-radius: 999px;
+            border: 2px solid rgba(255, 255, 255, 0.92);
         }
     }
 
@@ -23,7 +115,9 @@
     display: flex;
     gap: 8px;
     padding: 12px;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid #d8e0e8;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 -8px 18px rgba(15, 28, 42, 0.06);
     flex-shrink: 0;
 
     > .ant-btn {

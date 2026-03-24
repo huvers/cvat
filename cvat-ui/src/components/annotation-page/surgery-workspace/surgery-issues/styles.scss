@@ -6,8 +6,8 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    height: 100%;
-    overflow-y: auto;
+    min-height: 100%;
+    overflow: visible;
 }
 
 .cvat-surgery-issues-header {

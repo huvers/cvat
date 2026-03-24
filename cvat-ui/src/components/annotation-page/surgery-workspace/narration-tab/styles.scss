@@ -5,8 +5,8 @@
 .cvat-narration-tab {
     display: flex;
     flex-direction: column;
-    height: 100%;
-    overflow-y: auto;
+    min-height: 100%;
+    overflow: visible;
 }
 
 .cvat-narration-tab-divider {
