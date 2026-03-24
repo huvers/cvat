@@ -28,8 +28,6 @@ from cvat.apps.engine.models import (
     DatasetEpisode,
     EpisodeStatus,
     Job,
-    JobClassification,
-    Label,
     Project,
     Segment,
     ServerFile,
@@ -185,29 +183,19 @@ def create_task_for_episode(
         organization=cloud_storage.organization,
     )
 
+    # Link episode to task
+    episode.task = db_task
+    episode.status = EpisodeStatus.INGESTED
+    episode.save(update_fields=["task", "status", "updated_date"])
+
+    # Link the episode before the job is created so the job-create signal can
+    # resolve the dataset procedure type into the default case classification.
     segment = Segment.objects.create(
         task=db_task,
         start_frame=0,
         stop_frame=0,
     )
-    job = Job.objects.create(segment=segment)
-
-    # Auto-classify with procedure type
-    procedure_label = None
-    if project:
-        procedure_label = Label.objects.filter(project=project, name=procedure_type).first()
-    if procedure_label is None:
-        procedure_label = Label.objects.filter(task=db_task, name=procedure_type).first()
-
-    if procedure_label:
-        JobClassification.objects.get_or_create(
-            job=job, label=procedure_label, defaults={"owner": owner},
-        )
-
-    # Link episode to task
-    episode.task = db_task
-    episode.status = EpisodeStatus.INGESTED
-    episode.save(update_fields=["task", "status", "updated_date"])
+    Job.objects.create(segment=segment)
 
     logger.info("Created task %r (id=%d) for episode %s", task_name, db_task.id, episode.s3_key)
     return db_task

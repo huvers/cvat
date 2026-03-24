@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: MIT
 import functools
+import logging
 import re
 import shutil
 
@@ -18,6 +19,8 @@ from cvat.apps.events.handlers import handle_cache_item_create
 
 from .models import Asset, AttributeSpec, CloudStorage, Data, Job, JobNarration, JobType, Label, Profile, Project, StateChoice, StatusChoice, Task
 
+logger = logging.getLogger(__name__)
+
 # TODO: need to log any problems reported by shutil.rmtree when the new
 # analytics feature is available. Now the log system can write information
 # into a file inside removed directory.
@@ -25,8 +28,19 @@ from .models import Asset, AttributeSpec, CloudStorage, Data, Job, JobNarration,
 
 @receiver(post_save, sender=Job)
 def __save_job_handler(instance, created, raw: bool, **kwargs):
-    # no need to update task status for newly created jobs
     if created:
+        if raw:
+            return
+
+        try:
+            from cvat.apps.engine.procedure_defaults import ensure_default_job_classification
+
+            ensure_default_job_classification(instance)
+        except Exception:
+            logger.exception(
+                "Failed to auto-assign the default procedure classification for job %d",
+                instance.id,
+            )
         return
 
     db_task = instance.segment.task

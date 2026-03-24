@@ -2785,6 +2785,7 @@ class TaskWriteSerializer(WriteOnceMixin, serializers.ModelSerializer, OrgTransf
     @transaction.atomic
     def update(self, instance: models.Task, validated_data: dict):
         update_fields: list[str] = []
+        project_was_updated = False
 
         if (
             "organization_id" in validated_data
@@ -2795,6 +2796,7 @@ class TaskWriteSerializer(WriteOnceMixin, serializers.ModelSerializer, OrgTransf
             (validated_project_id := validated_data.get("project_id")) is not None and validated_project_id != instance.project_id
         ):
             self.update_project(instance, validated_data=validated_data, update_fields=update_fields)
+            project_was_updated = True
         else:
             self.update_base_properties(instance, validated_data=validated_data, update_fields=update_fields)
             self.update_labels(instance, validated_data=validated_data, update_fields=update_fields)
@@ -2803,6 +2805,11 @@ class TaskWriteSerializer(WriteOnceMixin, serializers.ModelSerializer, OrgTransf
 
         if update_fields:
             instance.save(update_fields=list(set(update_fields) | {"updated_date"}))
+
+        if project_was_updated:
+            from cvat.apps.engine.procedure_defaults import backfill_default_job_classifications_for_task
+
+            backfill_default_job_classifications_for_task(instance)
 
         if 'label_set' in validated_data and not instance.project_id:
             self.update_child_objects_on_labels_update(instance)
