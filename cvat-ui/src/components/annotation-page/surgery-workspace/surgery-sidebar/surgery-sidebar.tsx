@@ -24,12 +24,15 @@ import SurgeryIssues from '../surgery-issues/surgery-issues';
 import VideoClassificationEditor from '../video-classification-editor/video-classification-editor';
 import './styles.scss';
 
+type SurgerySidebarTab = 'copilot' | 'case-info' | 'narration' | 'phase-track' | 'issues';
+
 export default function SurgerySidebar(): JSX.Element {
     const dispatch = useDispatch();
     const history = useHistory();
     const job = useSelector((state: CombinedState) => state.annotation.job.instance) as Job | null | undefined;
     const [submitting, setSubmitting] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const [activeTab, setActiveTab] = useState<SurgerySidebarTab>('copilot');
 
     const doSubmit = useCallback(async () => {
         if (!job) return;
@@ -109,12 +112,13 @@ export default function SurgerySidebar(): JSX.Element {
         <Layout.Sider width={420} className='cvat-surgery-sidebar'>
             <Tabs
                 className='cvat-surgery-sidebar-tabs'
-                defaultActiveKey='copilot'
+                activeKey={activeTab}
+                onChange={(key) => setActiveTab(key as SurgerySidebarTab)}
                 items={[
                     {
                         key: 'copilot',
                         label: 'Copilot',
-                        children: <CopilotPanel />,
+                        children: <CopilotPanel onOpenTab={setActiveTab} />,
                     },
                     {
                         key: 'case-info',

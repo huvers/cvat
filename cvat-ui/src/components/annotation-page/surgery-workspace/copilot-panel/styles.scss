@@ -5,38 +5,114 @@
 .cvat-copilot-panel {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    height: 100%;
-    overflow-y: auto;
+    gap: 16px;
+    min-height: 100%;
+    color: #1f1f1f;
 }
 
-// ── Progress overview ──
+.cvat-copilot-top {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: -12px -12px 0;
+    padding: 12px 12px 14px;
+    background: linear-gradient(180deg, #fffaf2 0%, #ffffff 76%);
+    border-bottom: 1px solid #f1e6d6;
+}
+
+.cvat-copilot-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
 
 .cvat-copilot-overview {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 10px;
-    background: #f8f9fa;
-    border-radius: 6px;
-    border: 1px solid #e8e8e8;
+    gap: 12px;
+    padding: 14px;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #eadfce;
+    box-shadow: 0 10px 26px rgba(28, 33, 40, 0.04);
 }
 
-.cvat-copilot-overview-stats {
+.cvat-copilot-overview-header,
+.cvat-copilot-summary-row,
+.cvat-copilot-section-header {
     display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
 
-    .ant-tag {
-        margin: 0;
-        font-size: 11px;
-    }
+.cvat-copilot-summary-card {
+    padding: 14px;
+    background: linear-gradient(180deg, #fff6ea 0%, #fff 100%);
+    border: 1px solid #eddcc4;
+    border-radius: 12px;
+}
+
+.cvat-copilot-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.cvat-copilot-metric {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fcf8f1;
+    border: 1px solid #f2e7d7;
+}
+
+.cvat-copilot-metric-value {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: #1f1f1f;
+}
+
+.cvat-copilot-metric-label {
+    font-size: 12px;
+    color: #7a6d5e;
+}
+
+.cvat-copilot-coverage-track {
+    height: 8px;
+    background: #f3ecdf;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.cvat-copilot-coverage-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #f5a623 0%, #3ba66b 100%);
+}
+
+.cvat-copilot-checklist-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cvat-copilot-checklist-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
 }
 
 .cvat-copilot-checklist {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
     font-size: 12px;
 }
 
@@ -44,18 +120,18 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    min-width: 0;
 }
 
 .cvat-copilot-checklist-pending {
-    color: #bbb;
+    color: #9b948a;
 }
-
-// ── Header ──
 
 .cvat-copilot-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
 }
 
 .cvat-copilot-spinner {
@@ -68,49 +144,77 @@
 
 .cvat-copilot-summary {
     font-size: 13px;
-    color: #555;
+    color: #4f4a44;
     margin: 0 !important;
     line-height: 1.5;
 }
 
-// ── Suggestion cards ──
-
 .cvat-copilot-suggestions {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
 }
 
 .cvat-copilot-suggestion-card {
-    padding: 10px 12px;
+    padding: 14px;
     background: #fff;
-    border: 1px solid #f0f0f0;
-    border-radius: 6px;
+    border: 1px solid #ede4d7;
+    border-radius: 12px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    transition: box-shadow 0.15s;
+    gap: 10px;
+    transition: box-shadow 0.15s, transform 0.15s;
 
     &:hover {
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 10px 28px rgba(28, 33, 40, 0.08);
+        transform: translateY(-1px);
     }
+}
+
+.cvat-copilot-priority-high {
+    border-left: 4px solid #ff7875;
+}
+
+.cvat-copilot-priority-medium {
+    border-left: 4px solid #faad14;
+}
+
+.cvat-copilot-priority-low {
+    border-left: 4px solid #69b1ff;
 }
 
 .cvat-copilot-suggestion-top {
     display: flex;
-    align-items: center;
-    gap: 6px;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.cvat-copilot-suggestion-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
 }
 
 .cvat-copilot-suggestion-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: #f5f0e8;
+    color: #925c11;
     font-size: 14px;
-    color: #1890ff;
 }
 
 .cvat-copilot-suggestion-priority {
     margin: 0;
-    font-size: 10px;
+    font-size: 11px;
     text-transform: uppercase;
+    flex-shrink: 0;
 }
 
 .cvat-copilot-suggestion-message {
@@ -118,17 +222,59 @@
     line-height: 1.5;
 }
 
-.cvat-copilot-suggestion-action {
-    align-self: flex-end;
+.cvat-copilot-suggestion-target {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
 }
 
-// ── Complete state ──
+.cvat-copilot-suggestion-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
 
+.cvat-copilot-suggestion-hint {
+    flex: 1;
+    min-width: 180px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.cvat-copilot-suggestion-action {
+    align-self: flex-start;
+}
+
+.cvat-copilot-state,
 .cvat-copilot-complete {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 24px 0;
-    color: #52c41a;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid #e8e8e8;
+    background: #fff;
+}
+
+.cvat-copilot-state-error {
+    border-color: #ffd6d4;
+    background: #fff7f7;
+    color: #a61d24;
+
+    .ant-typography {
+        margin-bottom: 0;
+    }
+}
+
+.cvat-copilot-complete {
+    color: #2f855a;
+}
+
+@media (max-width: 1200px) {
+    .cvat-copilot-checklist,
+    .cvat-copilot-metric-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
