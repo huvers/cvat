@@ -36,6 +36,7 @@ from azure.core.exceptions import HttpResponseError, ServiceRequestError
 from botocore.exceptions import ClientError, EndpointConnectionError
 from django.conf import settings
 from django.contrib.auth.models import Group, User
+from django.core.files.base import ContentFile
 from django.http import FileResponse, HttpResponse
 from django.test import SimpleTestCase, override_settings
 from pdf2image import convert_from_bytes
@@ -60,6 +61,8 @@ from cvat.apps.engine.models import (
     DimensionType,
     Job,
     JobClassification,
+    JobNarration,
+    JobTranscript,
     Label,
     Project,
     Segment,
@@ -69,6 +72,7 @@ from cvat.apps.engine.models import (
     StorageChoice,
     StorageMethodChoice,
     Task,
+    TranscriptStatus,
 )
 from cvat.apps.engine.tests.utils import (
     ApiTestBase,
@@ -426,6 +430,61 @@ class JobClassificationAPITestCase(ApiTestBase):
         self.assertFalse(
             JobClassification.objects.filter(job=self.job, label=self.primary_label).exists()
         )
+
+
+class JobTranscriptAPITestCase(ApiTestBase):
+    @classmethod
+    def setUpTestData(cls):
+        create_db_users(cls)
+        cls.task = create_db_task(
+            {
+                "name": "my narrated task",
+                "owner": cls.owner,
+                "assignee": cls.assignee,
+                "overlap": 0,
+                "segment_size": 100,
+                "image_quality": 75,
+                "size": 100,
+            }
+        )
+        cls.job = Job.objects.filter(segment__task_id=cls.task.id).first()
+        cls.job.assignee = cls.annotator
+        cls.job.save()
+
+        narration = JobNarration(job=cls.job, owner=cls.annotator)
+        narration.file.save("narration.webm", ContentFile(b"fake-audio"), save=True)
+        cls.transcript = JobTranscript.objects.create(
+            narration=narration,
+            status=TranscriptStatus.COMPLETED,
+            raw_transcript="raw transcript",
+            corrected_transcript="corrected transcript",
+            word_timestamps=[{"word": "hello", "start": 0.0, "end": 0.5}],
+        )
+
+    def _path(self):
+        return f"/api/jobs/{self.job.id}/transcripts"
+
+    def test_annotator_can_list_job_transcripts(self):
+        response = self._get_request(self._path(), self.annotator)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], self.transcript.id)
+        self.assertEqual(response.data[0]["corrected_transcript"], "corrected transcript")
+
+    def test_annotator_can_patch_job_transcript(self):
+        response = self._patch_request(
+            self._path(),
+            self.annotator,
+            data={
+                "id": self.transcript.id,
+                "corrected_transcript": "edited transcript",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.transcript.refresh_from_db()
+        self.assertEqual(self.transcript.corrected_transcript, "edited transcript")
 
 
 class JobPartialUpdateAPITestCase(ApiTestBase):

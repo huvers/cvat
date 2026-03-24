@@ -123,6 +123,21 @@ COPILOT_LLM_URL = os.getenv("COPILOT_LLM_URL") or LLM_API_URL or "http://localho
 COPILOT_LLM_MODEL = os.getenv("COPILOT_LLM_MODEL") or LLM_MODEL or "meta/llama-3.1-8b-instruct"
 COPILOT_LLM_API_KEY = os.getenv("COPILOT_LLM_API_KEY") or _default_llm_api_key
 
-TRANSCRIPTION_LLM_URL = os.getenv("TRANSCRIPTION_LLM_URL") or LLM_API_URL or "http://localhost:8000/v1/chat/completions"
-TRANSCRIPTION_LLM_MODEL = os.getenv("TRANSCRIPTION_LLM_MODEL") or LLM_MODEL or "meta/llama-3.1-8b-instruct"
-TRANSCRIPTION_LLM_API_KEY = os.getenv("TRANSCRIPTION_LLM_API_KEY") or _default_llm_api_key
+TRANSCRIPTION_ASR_URL = os.getenv("TRANSCRIPTION_ASR_URL") or "http://parakeet:8888/asr"
+TRANSCRIPTION_LLM_URL = (
+    os.getenv("TRANSCRIPTION_LLM_URL")
+    or os.getenv("COPILOT_LLM_URL")
+    or LLM_API_URL
+    or "http://localhost:8000/v1/chat/completions"
+)
+TRANSCRIPTION_LLM_MODEL = (
+    os.getenv("TRANSCRIPTION_LLM_MODEL")
+    or os.getenv("COPILOT_LLM_MODEL")
+    or LLM_MODEL
+    or "meta/llama-3.1-8b-instruct"
+)
+TRANSCRIPTION_LLM_API_KEY = (
+    os.getenv("TRANSCRIPTION_LLM_API_KEY")
+    or os.getenv("COPILOT_LLM_API_KEY")
+    or _default_llm_api_key
+)
