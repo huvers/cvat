@@ -59,6 +59,7 @@ from cvat.apps.engine.models import (
     Data,
     DimensionType,
     Job,
+    JobClassification,
     Label,
     Project,
     Segment,
@@ -356,6 +357,75 @@ class JobGetAPITestCase(ApiTestBase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         response = self._run_api_v2_jobs_id(self.job.id + 10, None)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class JobClassificationAPITestCase(ApiTestBase):
+    @classmethod
+    def setUpTestData(cls):
+        create_db_users(cls)
+        cls.task = create_db_task(
+            {
+                "name": "my classified task",
+                "owner": cls.owner,
+                "assignee": cls.assignee,
+                "overlap": 0,
+                "segment_size": 100,
+                "image_quality": 75,
+                "size": 100,
+                "labels": [
+                    {"name": "cholecystectomy", "color": "#ff8800"},
+                    {"name": "appendectomy", "color": "#0088ff"},
+                ],
+            }
+        )
+        cls.job = Job.objects.filter(segment__task_id=cls.task.id).first()
+        cls.job.assignee = cls.annotator
+        cls.job.save()
+        cls.primary_label, cls.secondary_label = list(
+            Label.objects.filter(task=cls.task).order_by("id")
+        )
+        JobClassification.objects.create(
+            job=cls.job,
+            label=cls.primary_label,
+            owner=cls.annotator,
+        )
+
+    def _path(self):
+        return f"/api/jobs/{self.job.id}/classifications"
+
+    def test_annotator_can_list_job_classifications(self):
+        response = self._get_request(self._path(), self.annotator)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["label_id"], self.primary_label.id)
+        self.assertEqual(response.data[0]["label_name"], self.primary_label.name)
+
+    def test_annotator_can_add_job_classification(self):
+        response = self._post_request(
+            self._path(),
+            self.annotator,
+            data={"label_id": self.secondary_label.id},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["label_id"], self.secondary_label.id)
+        self.assertTrue(
+            JobClassification.objects.filter(job=self.job, label=self.secondary_label).exists()
+        )
+
+    def test_annotator_can_delete_job_classification(self):
+        with ForceLogin(self.annotator, self.client):
+            response = self.client.delete(
+                self._path(),
+                data={"label_id": self.primary_label.id},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(
+            JobClassification.objects.filter(job=self.job, label=self.primary_label).exists()
+        )
 
 
 class JobPartialUpdateAPITestCase(ApiTestBase):

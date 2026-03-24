@@ -1973,13 +1973,23 @@ class JobViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateMo
 
         if request.method == 'GET':
             queryset = models.JobNarration.objects.filter(job_id=self._object.id).select_related("owner").order_by("-id")
-            serializer = JobNarrationReadSerializer(queryset, many=True)
+            serializer = JobNarrationReadSerializer(
+                queryset,
+                many=True,
+                context={"request": request},
+            )
             return Response(serializer.data)
 
         serializer = JobNarrationWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         narration = serializer.save(job=self._object, owner=request.user)
-        return Response(JobNarrationReadSerializer(narration).data, status=status.HTTP_201_CREATED)
+        return Response(
+            JobNarrationReadSerializer(
+                narration,
+                context={"request": request},
+            ).data,
+            status=status.HTTP_201_CREATED,
+        )
 
     @extend_schema(methods=['GET'], summary='List classifications for a job',
         responses={
@@ -2004,7 +2014,11 @@ class JobViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateMo
             queryset = models.JobClassification.objects.filter(
                 job_id=self._object.id,
             ).select_related("owner", "label").order_by("id")
-            serializer = JobClassificationReadSerializer(queryset, many=True)
+            serializer = JobClassificationReadSerializer(
+                queryset,
+                many=True,
+                context={"request": request},
+            )
             return Response(serializer.data)
 
         if request.method == 'DELETE':
@@ -2022,7 +2036,10 @@ class JobViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateMo
         serializer.is_valid(raise_exception=True)
         classification = serializer.save(job=self._object, owner=request.user)
         return Response(
-            JobClassificationReadSerializer(classification).data,
+            JobClassificationReadSerializer(
+                classification,
+                context={"request": request},
+            ).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -2141,13 +2158,21 @@ class JobViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateMo
         classifications_qs = models.JobClassification.objects.filter(
             job_id=job.id,
         ).select_related("owner", "label").order_by("id")
-        classifications = JobClassificationReadSerializer(classifications_qs, many=True).data
+        classifications = JobClassificationReadSerializer(
+            classifications_qs,
+            many=True,
+            context={"request": request},
+        ).data
 
         # Narrations + transcripts
         narrations_qs = models.JobNarration.objects.filter(
             job_id=job.id,
         ).select_related("owner").order_by("id")
-        narrations = JobNarrationReadSerializer(narrations_qs, many=True).data
+        narrations = JobNarrationReadSerializer(
+            narrations_qs,
+            many=True,
+            context={"request": request},
+        ).data
 
         transcripts_qs = models.JobTranscript.objects.filter(
             narration__job_id=job.id,
