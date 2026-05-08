@@ -10,6 +10,8 @@ import Button from 'antd/lib/button';
 import Checkbox from 'antd/lib/checkbox';
 import { Link } from 'react-router-dom';
 import { BackArrowIcon } from 'icons';
+import Title from 'antd/lib/typography/Title';
+import Text from 'antd/lib/typography/Text';
 
 import { UserAgreement } from 'reducers';
 import { Row, Col } from 'antd/lib/grid';
@@ -119,6 +121,10 @@ function RegisterFormComponent(props: Props): JSX.Element {
                     </Row>
                 )
             }
+            <Title level={2}>Create your account</Title>
+            <Text className='cvat-signing-form-copy'>
+                Join the project and start annotating surgical videos and images.
+            </Text>
             <Form
                 form={form}
                 onFinish={(values: Record<string, string | boolean>) => {

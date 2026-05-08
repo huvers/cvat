@@ -3723,6 +3723,81 @@ class DatasetWriteSerializer(serializers.ModelSerializer):
 
 
 class SurgeryModelSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        model_type = attrs.get("model_type", getattr(self.instance, "model_type", None))
+        config = attrs.get("config", getattr(self.instance, "config", {}) or {}) or {}
+
+        if model_type == models.SurgeryModelType.ANATOMY_SEGMENTER:
+            checkpoint_path = str(config.get("checkpoint_path") or "").strip()
+            if not checkpoint_path:
+                raise serializers.ValidationError(
+                    {"config": "Anatomy segmenter models require config.checkpoint_path."}
+                )
+
+            device = config.get("device")
+            if device is not None and str(device).strip().lower() not in {"cpu", "cuda"}:
+                raise serializers.ValidationError(
+                    {"config": "config.device must be either 'cpu' or 'cuda'."}
+                )
+
+            for key in ("confidence_threshold", "score_threshold"):
+                if key in config and config[key] is not None:
+                    try:
+                        float(config[key])
+                    except (TypeError, ValueError) as exc:
+                        raise serializers.ValidationError(
+                            {"config": f"config.{key} must be numeric."}
+                        ) from exc
+
+            if "priority" in config and config["priority"] is not None:
+                try:
+                    int(config["priority"])
+                except (TypeError, ValueError) as exc:
+                    raise serializers.ValidationError(
+                        {"config": "config.priority must be an integer."}
+                    ) from exc
+
+            prompt_options = config.get("prompt_options")
+            if prompt_options is not None:
+                if not isinstance(prompt_options, list):
+                    raise serializers.ValidationError(
+                        {"config": "config.prompt_options must be a list."}
+                    )
+                for index, item in enumerate(prompt_options):
+                    if not isinstance(item, dict):
+                        raise serializers.ValidationError(
+                            {"config": f"config.prompt_options[{index}] must be an object."}
+                        )
+                    if not str(item.get("prompt") or "").strip():
+                        raise serializers.ValidationError(
+                            {"config": f"config.prompt_options[{index}].prompt is required."}
+                        )
+                    if not str(item.get("key") or item.get("value") or item.get("prompt") or "").strip():
+                        raise serializers.ValidationError(
+                            {"config": f"config.prompt_options[{index}] must have a key, value, or prompt."}
+                        )
+                    if "auto_mask_priority" in item and item["auto_mask_priority"] is not None:
+                        try:
+                            int(item["auto_mask_priority"])
+                        except (TypeError, ValueError) as exc:
+                            raise serializers.ValidationError(
+                                {"config": f"config.prompt_options[{index}].auto_mask_priority must be an integer."}
+                            ) from exc
+                    if "component_mode" in item and item["component_mode"] not in (None, "", "union", "components"):
+                        raise serializers.ValidationError(
+                            {"config": f"config.prompt_options[{index}].component_mode must be 'union' or 'components'."}
+                        )
+                    if "min_component_area" in item and item["min_component_area"] is not None:
+                        try:
+                            int(item["min_component_area"])
+                        except (TypeError, ValueError) as exc:
+                            raise serializers.ValidationError(
+                                {"config": f"config.prompt_options[{index}].min_component_area must be an integer."}
+                            ) from exc
+
+        return attrs
+
     class Meta:
         model = models.SurgeryModel
         fields = (

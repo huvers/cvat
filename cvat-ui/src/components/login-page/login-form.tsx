@@ -104,6 +104,9 @@ function LoginFormComponent(props: Props): JSX.Element {
             </Row>
             <Col>
                 <Title level={2}> Sign in </Title>
+                <Text className='cvat-signing-form-copy'>
+                    Continue to your annotation workspace.
+                </Text>
             </Col>
             <Form
                 className={`cvat-login-form ${credential ? 'cvat-login-form-extended' : ''}`}

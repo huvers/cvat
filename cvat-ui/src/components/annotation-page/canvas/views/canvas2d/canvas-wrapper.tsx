@@ -387,6 +387,7 @@ type Props = StateToProps & DispatchToProps;
 class CanvasWrapperComponent extends React.PureComponent<Props> {
     private debouncedUpdate = debounce(this.updateCanvas.bind(this), 250, { leading: true });
     private canvasTipsRef = React.createRef<CanvasTipsComponent>();
+    private hoverLabelRef = React.createRef<HTMLDivElement>();
 
     public componentDidMount(): void {
         const {
@@ -481,6 +482,7 @@ class CanvasWrapperComponent extends React.PureComponent<Props> {
             highlightedConflict,
             imageFilters,
             focusedObjectPadding,
+            workspace,
         } = this.props;
         const { canvasInstance } = this.props as { canvasInstance: Canvas };
 
@@ -609,12 +611,17 @@ class CanvasWrapperComponent extends React.PureComponent<Props> {
             }
         }
 
+        if (prevProps.workspace !== workspace && workspace !== Workspace.SURGERY) {
+            this.updateHoveredLabel(null);
+        }
+
         this.activateOnCanvas();
     }
 
     public componentWillUnmount(): void {
         const { canvasInstance } = this.props as { canvasInstance: Canvas };
 
+        canvasInstance.html().removeEventListener('mouseleave', this.onCanvasMouseLeave);
         canvasInstance.html().removeEventListener('mousedown', this.onCanvasMouseDown);
         canvasInstance.html().removeEventListener('click', this.onCanvasClicked);
         canvasInstance.html().removeEventListener('canvas.editstart', this.onCanvasEditStart);
@@ -792,6 +799,27 @@ class CanvasWrapperComponent extends React.PureComponent<Props> {
         }
     };
 
+    private onCanvasMouseLeave = (): void => {
+        this.updateHoveredLabel(null);
+    };
+
+    private updateHoveredLabel(label: string | null, clientX = 0, clientY = 0): void {
+        const hoverNode = this.hoverLabelRef.current;
+        if (!hoverNode) {
+            return;
+        }
+
+        if (!label || this.props.workspace !== Workspace.SURGERY) {
+            hoverNode.classList.remove('cvat-canvas-hover-label-visible');
+            hoverNode.textContent = '';
+            return;
+        }
+
+        hoverNode.textContent = label;
+        hoverNode.style.transform = `translate(${clientX + 16}px, ${clientY + 16}px)`;
+        hoverNode.classList.add('cvat-canvas-hover-label-visible');
+    }
+
     private onCanvasClicked = (): void => {
         const { canvasInstance } = this.props as { canvasInstance: Canvas };
         if (!canvasInstance.html().contains(document.activeElement) && document.activeElement instanceof HTMLElement) {
@@ -858,15 +886,24 @@ class CanvasWrapperComponent extends React.PureComponent<Props> {
         if (result && result.state) {
             if ([ShapeType.POLYLINE, ShapeType.POINTS].includes(result.state.shapeType)) {
                 if (result.distance > MAX_DISTANCE_TO_OPEN_SHAPE) {
+                    this.updateHoveredLabel(null);
                     return;
                 }
             }
 
+            this.updateHoveredLabel(
+                result.state.label?.name || null,
+                event.detail.clientX,
+                event.detail.clientY,
+            );
             const newActivatedElement = event.detail.activatedElementID || null;
             if (activatedStateID !== result.state.clientID || activatedElementID !== newActivatedElement) {
                 onActivateObject(result.state.clientID, event.detail.activatedElementID || null);
             }
+            return;
         }
+
+        this.updateHoveredLabel(null);
     };
 
     private onCanvasEditStart = (event: any): void => {
@@ -1086,6 +1123,7 @@ class CanvasWrapperComponent extends React.PureComponent<Props> {
 
         canvasInstance.html().addEventListener('mousedown', this.onCanvasMouseDown);
         canvasInstance.html().addEventListener('click', this.onCanvasClicked);
+        canvasInstance.html().addEventListener('mouseleave', this.onCanvasMouseLeave);
         canvasInstance.html().addEventListener('canvas.editstart', this.onCanvasEditStart);
         canvasInstance.html().addEventListener('canvas.edited', this.onCanvasEditDone);
         canvasInstance.html().addEventListener('canvas.sliced', this.onCanvasSliceDone);
@@ -1209,6 +1247,8 @@ class CanvasWrapperComponent extends React.PureComponent<Props> {
                         height: '100%',
                     }}
                 />
+
+                <div ref={this.hoverLabelRef} className='cvat-canvas-hover-label' />
 
                 <Popover
                     destroyTooltipOnHide

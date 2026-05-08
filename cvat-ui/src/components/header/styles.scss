@@ -40,6 +40,15 @@
     }
 }
 
+.cvat-logo-icon-compact {
+    width: $grid-unit-size * 6;
+    height: $grid-unit-size * 6;
+
+    img {
+        border-radius: $grid-unit-size;
+    }
+}
+
 .cvat-left-header {
     .ant-btn.cvat-header-button {
         opacity: 0.7;

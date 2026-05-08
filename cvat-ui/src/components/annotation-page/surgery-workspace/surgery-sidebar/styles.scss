@@ -132,3 +132,61 @@
         flex: 1;
     }
 }
+
+.cvat-surgery-sam3-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cvat-surgery-sam3-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.cvat-surgery-sam3-subtitle {
+    color: #5e7388;
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 4px;
+}
+
+.cvat-surgery-sam3-loading {
+    display: flex;
+    justify-content: center;
+    padding: 24px 0;
+}
+
+.cvat-surgery-sam3-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cvat-surgery-sam3-model-select,
+.cvat-surgery-sam3-label-select {
+    width: 100%;
+}
+
+.cvat-surgery-sam3-model-meta,
+.cvat-surgery-sam3-context {
+    line-height: 1.5;
+}
+
+.cvat-surgery-sam3-threshold-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cvat-surgery-sam3-alert-body {
+    line-height: 1.5;
+}
+
+.cvat-surgery-sam3-point-session {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}

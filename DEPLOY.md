@@ -148,11 +148,21 @@ cloudflared tunnel --url http://localhost:8080
 
 # Option B: HTTPS with Let's Encrypt
 # Edit .env:
-CVAT_HOST=your-domain.com
+CVAT_HOST=annotate.open-h.org
+CVAT_BASE_URL=https://annotate.open-h.org
+ALLOWED_HOSTS=annotate.open-h.org,localhost,127.0.0.1
+ACME_EMAIL=ops@open-h.org
 # Then:
 docker compose -f docker-compose.yml -f docker-compose.surgery.yml \
   -f docker-compose.https.yml up -d
 ```
+
+For the direct HTTPS path behind Cloudflare DNS, start with the DNS record in
+`DNS only` mode so Traefik can complete the ACME challenge on ports 80/443.
+
+If you want public self-registration on production, do not put Cloudflare
+Access in front of the production hostname. Use Access for staging/admin paths
+instead.
 
 ## Architecture
 

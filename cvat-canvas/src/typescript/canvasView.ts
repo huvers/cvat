@@ -1911,6 +1911,8 @@ export class CanvasViewImpl implements CanvasView, Listener {
                     bubbles: false,
                     cancelable: true,
                     detail: {
+                        clientX: e.clientX,
+                        clientY: e.clientY,
                         x: x - offset,
                         y: y - offset,
                         states: this.controller.objects,
@@ -3625,6 +3627,8 @@ export class CanvasViewImpl implements CanvasView, Listener {
                             bubbles: false,
                             cancelable: true,
                             detail: {
+                                clientX: e.clientX,
+                                clientY: e.clientY,
                                 x: x - this.geometry.offset,
                                 y: y - this.geometry.offset,
                                 activatedElementID: element.clientID,
