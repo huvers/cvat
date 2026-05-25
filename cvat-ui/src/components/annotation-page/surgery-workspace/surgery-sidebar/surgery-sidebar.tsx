@@ -20,11 +20,12 @@ import serverProxy from 'cvat-core/src/server-proxy';
 import CopilotPanel from '../copilot-panel/copilot-panel';
 import NarrationTab from '../narration-tab/narration-tab';
 import PhaseTrackEditor from '../phase-track-editor/phase-track-editor';
+import SAM3Panel from './sam3-panel';
 import SurgeryIssues from '../surgery-issues/surgery-issues';
 import VideoClassificationEditor from '../video-classification-editor/video-classification-editor';
 import './styles.scss';
 
-type SurgerySidebarTab = 'copilot' | 'case-info' | 'narration' | 'phase-track' | 'issues';
+type SurgerySidebarTab = 'copilot' | 'anatomy' | 'case-info' | 'narration' | 'phase-track' | 'issues';
 
 export default function SurgerySidebar(): JSX.Element {
     const dispatch = useDispatch();
@@ -32,7 +33,7 @@ export default function SurgerySidebar(): JSX.Element {
     const job = useSelector((state: CombinedState) => state.annotation.job.instance) as Job | null | undefined;
     const [submitting, setSubmitting] = useState(false);
     const [exporting, setExporting] = useState(false);
-    const [activeTab, setActiveTab] = useState<SurgerySidebarTab>('copilot');
+    const [activeTab, setActiveTab] = useState<SurgerySidebarTab>('anatomy');
 
     const doSubmit = useCallback(async () => {
         if (!job) return;
@@ -115,6 +116,11 @@ export default function SurgerySidebar(): JSX.Element {
                 activeKey={activeTab}
                 onChange={(key) => setActiveTab(key as SurgerySidebarTab)}
                 items={[
+                    {
+                        key: 'anatomy',
+                        label: 'Anatomy',
+                        children: <SAM3Panel />,
+                    },
                     {
                         key: 'copilot',
                         label: 'Copilot',

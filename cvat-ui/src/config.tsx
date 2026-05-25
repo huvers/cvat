@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import React from 'react';
+import { PLATFORM_NAME } from 'branding';
 
 const NO_BREAK_SPACE = '\u00a0';
 const UNDEFINED_ATTRIBUTE_VALUE = '__undefined__';
@@ -54,7 +55,7 @@ const DEFAULT_AWS_REGIONS: string[][] = [
 
 const SERVER_UNAVAILABLE_COMPONENT = (
     <>
-        Make sure the CVAT backend and all necessary services
+        Make sure the {PLATFORM_NAME} backend and all necessary services
         (Database, Redis and Open Policy Agent) are running and available.
         If you upgraded from version 2.2.0 or earlier, manual actions may be needed,
         see the&nbsp;

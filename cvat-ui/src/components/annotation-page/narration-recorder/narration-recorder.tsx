@@ -213,7 +213,7 @@ export default function NarrationRecorder(props: Props): JSX.Element {
                                     {recorderSupport.description}
                                 </Typography.Text>
                                 <Typography.Text type='secondary'>
-                                    Open CVAT through HTTPS, or through a localhost tunnel on your laptop, to enable recording.
+                                    Open the annotation platform through HTTPS, or through a localhost tunnel on your laptop, to enable recording.
                                 </Typography.Text>
                             </Space>
                         )}

@@ -21,6 +21,10 @@ $social-google-background: #4286f5;
 }
 
 .cvat-signing-title {
+    display: flex;
+    flex-direction: column;
+    gap: $grid-unit-size * 4;
+
     .ant-typography {
         color: $heading-color;
         margin: 0;
@@ -34,18 +38,19 @@ $social-google-background: #4286f5;
     }
 }
 
-.cvat-signing-header-logo-wrapper {
-    height: 100%;
-}
+.cvat-logo-icon.cvat-logo-icon-auth-panel {
+    width: $grid-unit-size * 14;
+    height: $grid-unit-size * 14;
+    max-width: none;
+    flex: none;
 
-.cvat-signing-header {
-    background: transparent;
-    position: fixed;
-    padding: $grid-unit-size * 2 0 0 0;
-    width: 100%;
-
-    .cvat-logo-icon {
-        filter: brightness(0) invert(1);
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        object-position: center center;
+        border-radius: $grid-unit-size * 3;
+        box-shadow: 0 22px 45px rgba(0, 0, 0, 0.24);
     }
 }
 
@@ -153,6 +158,13 @@ $social-google-background: #4286f5;
     margin-bottom: $grid-unit-size * 4;
 }
 
+.cvat-signing-form-copy {
+    display: block;
+    margin-top: 0;
+    margin-bottom: $grid-unit-size * 5;
+    color: #4b5563;
+}
+
 .cvat-credentials-action-button {
     width: 100%;
     border-radius: $border-radius-base;
@@ -191,6 +203,10 @@ $social-google-background: #4286f5;
 
     .ant-form-item-explain-error:not(:first-child) {
         display: none;
+    }
+
+    h2.ant-typography {
+        margin-bottom: $grid-unit-size;
     }
 }
 

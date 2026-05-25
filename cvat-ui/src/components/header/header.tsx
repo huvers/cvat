@@ -14,7 +14,6 @@ import {
     InfoCircleOutlined,
     LoadingOutlined,
     LogoutOutlined,
-    GithubOutlined,
     QuestionCircleOutlined,
     CaretDownOutlined,
     ControlOutlined,
@@ -175,7 +174,7 @@ function HeaderComponent(props: Props): JSX.Element {
     } = props;
 
     const {
-        CHANGELOG_URL, LICENSE_URL, GITHUB_URL, GUIDE_URL, DISCORD_URL,
+        CHANGELOG_URL, LICENSE_URL, GUIDE_URL, DISCORD_URL,
     } = config;
 
     const isMounted = useIsMounted();
@@ -400,7 +399,7 @@ function HeaderComponent(props: Props): JSX.Element {
         <Layout.Header className='cvat-header'>
             <GlobalHotKeys keyMap={subKeyMap(componentShortcuts, keyMap)} handlers={handlers} />
             <div className='cvat-left-header'>
-                <CVATLogo />
+                <CVATLogo className='cvat-logo-icon-compact' />
                 <Button
                     className={getButtonClassName('my-work')}
                     type='link'
@@ -536,19 +535,6 @@ function HeaderComponent(props: Props): JSX.Element {
                 ) : null}
             </div>
             <div className='cvat-right-header'>
-                <CVATTooltip overlay='Click to open repository'>
-                    <Button
-                        icon={<GithubOutlined />}
-                        size='large'
-                        className='cvat-open-repository-button cvat-header-button'
-                        type='link'
-                        href={GITHUB_URL}
-                        onClick={(event: React.MouseEvent): void => {
-                            event.preventDefault();
-                            window.open(GITHUB_URL, '_blank');
-                        }}
-                    />
-                </CVATTooltip>
                 <CVATTooltip overlay='Click to open guide'>
                     <Button
                         icon={<QuestionCircleOutlined />}

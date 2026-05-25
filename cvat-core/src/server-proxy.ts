@@ -20,7 +20,9 @@ import {
     SerializedQualityReportData, APIQualityReportsFilter, APIAnalyticsEventsFilter, APIConsensusSettingsFilter,
     SerializedRequest, SerializedJobValidationLayout, SerializedTaskValidationLayout, SerializedConsensusSettingsData,
     SerializedApiToken, APIApiTokensFilter, SerializedJobNarration, SerializedJobClassification,
-    SerializedJobTranscript,
+    SerializedJobTranscript, SerializedSAM3Model, SerializedSAM3Session, SerializedSAM3TextResult,
+    SerializedSAM3MaskResult, SerializedSAM3PointsResult, SerializedSAM3LabelSyncResult,
+    SerializedSAM3VideoSession, SerializedSAM3PropagationResult,
 } from './server-response-types';
 import { APIApiTokenModifiableFields } from './server-request-types';
 import { PaginatedResource, SerializedModel, UpdateStatusData } from './core-types';
@@ -1686,6 +1688,288 @@ async function getSurgeryExport(jobID: number): Promise<Record<string, any>> {
     }
 }
 
+async function getSAM3Models(jobID: number): Promise<SerializedSAM3Model[]> {
+    const { backendAPI } = config;
+
+    try {
+        const response = await Axios.get(`${backendAPI}/jobs/${jobID}/sam3/models`, {
+            params: {
+                ...enableOrganization(),
+            },
+        });
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function createSAM3Session(
+    jobID: number,
+    payload: {
+        model_id: number;
+        frame: number;
+        confidence_threshold?: number;
+    },
+): Promise<SerializedSAM3Session> {
+    const { backendAPI } = config;
+
+    try {
+        const response = await Axios.post(
+            `${backendAPI}/jobs/${jobID}/sam3/sessions`,
+            payload,
+            {
+                params: {
+                    ...enableOrganization(),
+                },
+            },
+        );
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function syncSAM3Labels(
+    jobID: number,
+    payload: {
+        model_id: number;
+    },
+): Promise<SerializedSAM3LabelSyncResult> {
+    const { backendAPI } = config;
+
+    try {
+        const response = await Axios.post(
+            `${backendAPI}/jobs/${jobID}/sam3/labels/sync`,
+            payload,
+            {
+                params: {
+                    ...enableOrganization(),
+                },
+            },
+        );
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function deleteSAM3Session(jobID: number, sessionID: string, modelID: number): Promise<void> {
+    const { backendAPI } = config;
+
+    try {
+        await Axios.delete(`${backendAPI}/jobs/${jobID}/sam3/sessions/${sessionID}`, {
+            params: {
+                model_id: modelID,
+                ...enableOrganization(),
+            },
+        });
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function inferSAM3Text(
+    jobID: number,
+    payload: {
+        model_id: number;
+        session_id: string;
+        labels: string[];
+        score_threshold?: number;
+    },
+): Promise<SerializedSAM3TextResult[]> {
+    const { backendAPI } = config;
+
+    try {
+        const response = await Axios.post(
+            `${backendAPI}/jobs/${jobID}/sam3/infer/text`,
+            payload,
+            {
+                params: {
+                    ...enableOrganization(),
+                },
+            },
+        );
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function inferSAM3Box(
+    jobID: number,
+    payload: {
+        model_id: number;
+        session_id: string;
+        label_name: string;
+        prompt?: string;
+        bbox: number[];
+        negative?: boolean;
+        score_threshold?: number;
+    },
+): Promise<SerializedSAM3MaskResult> {
+    const { backendAPI } = config;
+
+    try {
+        const response = await Axios.post(
+            `${backendAPI}/jobs/${jobID}/sam3/infer/box`,
+            payload,
+            {
+                params: {
+                    ...enableOrganization(),
+                },
+            },
+        );
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function inferSAM3Points(
+    jobID: number,
+    payload: {
+        model_id: number;
+        session_id: string;
+        label_name?: string;
+        prompt?: string;
+        points: { x: number; y: number; label: number }[];
+        logits_token?: string | null;
+        initial_mask_rle?: number[] | null;
+        multimask_output?: boolean;
+        score_threshold?: number;
+    },
+): Promise<SerializedSAM3PointsResult> {
+    const { backendAPI } = config;
+
+    try {
+        const response = await Axios.post(
+            `${backendAPI}/jobs/${jobID}/sam3/infer/points`,
+            payload,
+            {
+                params: {
+                    ...enableOrganization(),
+                },
+            },
+        );
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+// ── SAM3.1 video tracking ───────────────────────────────────────────
+
+async function createSAM3VideoSession(
+    jobID: number,
+    data: { model_id: number; start_frame: number; stop_frame: number; step?: number },
+): Promise<SerializedSAM3VideoSession> {
+    const { backendAPI } = config;
+    try {
+        const response = await Axios.post(
+            `${backendAPI}/jobs/${jobID}/sam3/sessions/video/`,
+            data,
+            { params: { ...enableOrganization() } },
+        );
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function deleteSAM3VideoSession(jobID: number, sessionID: string, modelID: number): Promise<void> {
+    const { backendAPI } = config;
+    try {
+        await Axios.delete(`${backendAPI}/jobs/${jobID}/sam3/sessions/video/${sessionID}`, {
+            params: { model_id: modelID, ...enableOrganization() },
+        });
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function addSAM3VideoPrompt(
+    jobID: number,
+    data: {
+        model_id: number;
+        session_id: string;
+        frame: number;
+        text?: string;
+        points?: number[][];
+        point_labels?: number[];
+        bounding_boxes?: number[][];
+        bounding_box_labels?: number[];
+        obj_id?: number;
+        output_prob_thresh?: number;
+    },
+): Promise<SerializedSAM3PropagationResult> {
+    const { backendAPI } = config;
+    try {
+        const response = await Axios.post(
+            `${backendAPI}/jobs/${jobID}/sam3/video/prompt`,
+            data,
+            { params: { ...enableOrganization() } },
+        );
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function propagateSAM3Video(
+    jobID: number,
+    data: {
+        model_id: number;
+        session_id: string;
+        direction?: string;
+        start_frame?: number;
+        max_frames?: number;
+        output_prob_thresh?: number;
+    },
+    onFrame?: (result: SerializedSAM3PropagationResult) => void,
+): Promise<SerializedSAM3PropagationResult[]> {
+    const { backendAPI } = config;
+    try {
+        const response = await Axios.post(
+            `${backendAPI}/jobs/${jobID}/sam3/video/propagate`,
+            data,
+            {
+                params: { ...enableOrganization() },
+                responseType: 'text',
+            },
+        );
+        // Parse NDJSON response
+        const results: SerializedSAM3PropagationResult[] = [];
+        const lines = (response.data as string).split('\n').filter(Boolean);
+        for (const line of lines) {
+            const parsed = JSON.parse(line) as SerializedSAM3PropagationResult;
+            results.push(parsed);
+            if (onFrame) {
+                onFrame(parsed);
+            }
+        }
+        return results;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
+async function removeSAM3VideoObject(
+    jobID: number,
+    data: { model_id: number; session_id: string; obj_id: number; frame?: number },
+): Promise<SerializedSAM3PropagationResult> {
+    const { backendAPI } = config;
+    try {
+        const response = await Axios.post(
+            `${backendAPI}/jobs/${jobID}/sam3/video/remove-object`,
+            data,
+            { params: { ...enableOrganization() } },
+        );
+        return response.data;
+    } catch (errorData) {
+        throw generateError(errorData);
+    }
+}
+
 async function triggerBulkIngest(params: {
     cloud_storage_id: number;
     procedure_prefix: string;
@@ -2743,6 +3027,18 @@ export default Object.freeze({
         getTranscripts: getJobTranscripts,
         updateTranscript: updateJobTranscript,
         getSurgeryExport,
+        getSAM3Models,
+        syncSAM3Labels,
+        createSAM3Session,
+        deleteSAM3Session,
+        inferSAM3Text,
+        inferSAM3Box,
+        inferSAM3Points,
+        createSAM3VideoSession,
+        deleteSAM3VideoSession,
+        addSAM3VideoPrompt,
+        propagateSAM3Video,
+        removeSAM3VideoObject,
         getSurgeryMetrics: async (jobID: number): Promise<Record<string, any>> => {
             const { backendAPI } = config;
             try {

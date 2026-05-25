@@ -214,6 +214,89 @@ export interface SerializedJobTranscript {
     updated_date: string;
 }
 
+export interface SerializedSAM3Model {
+    id: number;
+    name: string;
+    display_name: string;
+    procedure_type: string;
+    variant_key: string | null;
+    is_default: boolean;
+    is_matching_procedure: boolean;
+    priority: number;
+    device: 'cpu' | 'cuda';
+    confidence_threshold: number;
+    score_threshold: number;
+    default_prompt_key: string | null;
+    prompt_options: SerializedSAM3PromptOption[];
+}
+
+export interface SerializedSAM3PromptOption {
+    key: string;
+    value: string | null;
+    display_name: string;
+    prompt: string;
+    color: string | null;
+    auto_mask_priority: number | null;
+    component_mode: 'union' | 'components' | null;
+    min_component_area: number | null;
+}
+
+export interface SerializedSAM3Session {
+    session_id: string;
+    width: number;
+    height: number;
+    checkpoint_path: string;
+    device: 'cpu' | 'cuda';
+}
+
+export interface SerializedSAM3TextResult {
+    label_name: string;
+    confidence: number;
+    mask_rle: number[] | null;
+}
+
+export interface SerializedSAM3MaskResult {
+    confidence: number;
+    mask_rle: number[] | null;
+}
+
+export interface SerializedSAM3PointsResult extends SerializedSAM3MaskResult {
+    logits_token: string | null;
+}
+
+export interface SerializedSAM3LabelConflict {
+    prompt_key: string;
+    prompt_display_name: string;
+    label_name: string;
+    label_type: string;
+}
+
+export interface SerializedSAM3LabelSyncResult {
+    created_labels: string[];
+    existing_labels: string[];
+    conflicts: SerializedSAM3LabelConflict[];
+    reload_required: boolean;
+}
+
+// SAM3.1 video tracking types
+export interface SerializedSAM3VideoSession {
+    session_id: string;
+    num_frames: number;
+    frame_index_map: Record<number, number>;
+    width: number;
+    height: number;
+}
+
+export interface SerializedSAM3VideoMask {
+    obj_id: number;
+    mask_rle: number[];
+}
+
+export interface SerializedSAM3PropagationResult {
+    frame_index: number;
+    masks: SerializedSAM3VideoMask[];
+}
+
 export type AttrInputType = 'select' | 'radio' | 'checkbox' | 'number' | 'text';
 export interface SerializedAttribute {
     name: string;

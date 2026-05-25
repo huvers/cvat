@@ -10,6 +10,7 @@ import Layout from 'antd/lib/layout';
 import { Col, Row } from 'antd/lib/grid';
 import Title from 'antd/lib/typography/Title';
 import CVATLogo from 'components/common/cvat-logo';
+import { PROJECT_NAME } from 'branding';
 import SVGSigningBackground from '../../assets/signing-background.svg';
 
 interface SignInLayoutComponentProps {
@@ -51,8 +52,8 @@ export const formSizes: FormSizes = {
 
 function SignInLayout(props: SignInLayoutComponentProps): JSX.Element {
     const { children } = props;
-    const { Content, Header } = Layout;
-    const subtitle = useSelector((state: CombinedState) => state.about.server.subtitle);
+    const { Content } = Layout;
+    const subtitle = useSelector((state: CombinedState) => state.about.server.subtitle) || PROJECT_NAME;
 
     const titleSizes = {
         xs: { span: 0 },
@@ -62,28 +63,14 @@ function SignInLayout(props: SignInLayoutComponentProps): JSX.Element {
         xl: { span: 8 },
         xxl: { span: 10 },
     };
-    const logoSizes = {
-        xs: { span: 21 },
-        sm: { span: 21 },
-        md: { span: 21 },
-        lg: { span: 21 },
-        xl: { span: 21 },
-        xxl: { span: 22 },
-    };
     return (
         <Layout>
             <SVGSigningBackground className='cvat-signing-background' />
-            <Header className='cvat-signing-header'>
-                <Row className='cvat-signing-header-logo-wrapper' justify='center' align='middle'>
-                    <Col {...logoSizes}>
-                        <CVATLogo />
-                    </Col>
-                </Row>
-            </Header>
             <Layout className='cvat-signing-layout'>
                 <Content>
                     <Row justify='center' align='middle' style={{ height: '100%' }}>
                         <Col {...titleSizes} className='cvat-signing-title'>
+                            <CVATLogo className='cvat-logo-icon-auth-panel' />
                             <Title>{subtitle}</Title>
                         </Col>
                         {children}

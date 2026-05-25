@@ -50,6 +50,28 @@ if [ ! -f .env ]; then
 fi
 echo "  ✓ .env file"
 
+# Export .env values for compose interpolation and local health checks
+set -a
+. ./.env
+set +a
+
+export ALLOWED_HOSTS="${ALLOWED_HOSTS:-${CVAT_HOST:-localhost},localhost,127.0.0.1}"
+
+COMPOSE_FILES="-f docker-compose.yml -f docker-compose.surgery.yml"
+PUBLIC_URL="${CVAT_BASE_URL:-http://localhost:8080}"
+ENABLE_HTTPS=false
+
+if [ -n "${ACME_EMAIL:-}" ]; then
+    ENABLE_HTTPS=true
+fi
+
+if [ "$ENABLE_HTTPS" = true ]; then
+    COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.https.yml"
+    PUBLIC_URL="${CVAT_BASE_URL:-https://${CVAT_HOST}}"
+elif [[ "${CVAT_BASE_URL:-}" =~ ^https:// ]]; then
+    echo "  (Public HTTPS URL configured without local ACME; assuming TLS terminates upstream)"
+fi
+
 # ── Build images ──
 if [ "$SKIP_BUILD" = false ]; then
     echo ""
@@ -62,11 +84,13 @@ fi
 echo ""
 echo "Starting services..."
 
-COMPOSE_FILES="-f docker-compose.yml -f docker-compose.surgery.yml"
 PROFILES=""
 if [ "$LOCAL_LLM" = true ]; then
     PROFILES="--profile local-llm"
     echo "  (Including local LLM service)"
+fi
+if [ "$ENABLE_HTTPS" = true ]; then
+    echo "  (Enabling Traefik HTTPS overlay for ${CVAT_HOST})"
 fi
 
 docker compose $COMPOSE_FILES $PROFILES up -d
@@ -113,15 +137,26 @@ fi
 echo ""
 echo "Running health checks..."
 
+CVAT_CHECK_OPTS=()
+CVAT_API_CHECK_URL="http://localhost:8080/api/server/about"
+CVAT_UI_CHECK_URL="http://localhost:8080/"
+CVAT_DISPLAY_URL="${PUBLIC_URL}"
+
+if [ "$ENABLE_HTTPS" = true ]; then
+    CVAT_CHECK_OPTS=(--resolve "${CVAT_HOST}:443:127.0.0.1" -k)
+    CVAT_API_CHECK_URL="https://${CVAT_HOST}/api/server/about"
+    CVAT_UI_CHECK_URL="https://${CVAT_HOST}/"
+fi
+
 # CVAT server
-if curl -sf http://localhost:8080/api/server/about >/dev/null 2>&1; then
-    echo "  ✓ CVAT server (http://localhost:8080)"
+if curl "${CVAT_CHECK_OPTS[@]}" -sf "$CVAT_API_CHECK_URL" >/dev/null 2>&1; then
+    echo "  ✓ CVAT server (${CVAT_DISPLAY_URL})"
 else
     echo "  ⚠ CVAT server not responding yet (may still be starting)"
 fi
 
 # CVAT UI
-if curl -sf http://localhost:8080/ >/dev/null 2>&1; then
+if curl "${CVAT_CHECK_OPTS[@]}" -sf "$CVAT_UI_CHECK_URL" >/dev/null 2>&1; then
     echo "  ✓ CVAT UI"
 else
     echo "  ⚠ CVAT UI not responding yet"
@@ -149,11 +184,11 @@ echo "════════════════════════�
 echo "  Deployment complete!"
 echo "═══════════════════════════════════════════════"
 echo ""
-echo "  Platform:  http://localhost:8080"
-echo "  My Work:   http://localhost:8080/my-work"
-echo "  Datasets:  http://localhost:8080/datasets"
-echo "  QA:        http://localhost:8080/surgery-qa"
-echo "  Ontology:  http://localhost:8080/ontology"
+echo "  Platform:  ${PUBLIC_URL}"
+echo "  My Work:   ${PUBLIC_URL}/my-work"
+echo "  Datasets:  ${PUBLIC_URL}/datasets"
+echo "  QA:        ${PUBLIC_URL}/surgery-qa"
+echo "  Ontology:  ${PUBLIC_URL}/ontology"
 echo ""
 echo "  Next steps:"
 echo "  1. Log in with your admin credentials"
@@ -162,6 +197,11 @@ echo "  3. Register your S3 cloud storage (Settings → Cloud Storages)"
 echo "  4. Go to Datasets → create a dataset or use Ingest page"
 echo "  5. Assign jobs to surgeons"
 echo ""
-echo "  For external access, set CVAT_HOST in .env to your"
-echo "  domain/IP and configure HTTPS via docker-compose.https.yml"
+if [ "$ENABLE_HTTPS" = true ]; then
+    echo "  HTTPS is enabled via Traefik + Let's Encrypt."
+    echo "  Ensure ${CVAT_HOST} resolves directly to this host and ports 80/443 are open."
+else
+    echo "  For external access, set CVAT_HOST/CVAT_BASE_URL in .env"
+    echo "  to your domain and add ACME_EMAIL for docker-compose.https.yml"
+fi
 echo ""

@@ -613,10 +613,13 @@ USE_X_FORWARDED_HOST = True
 SENDFILE_ROOT = BASE_DIR
 
 CVAT_DOCS_URL = "https://docs.cvat.ai/docs/"
+PROJECT_NAME = "Open-H Surgical Annotation Project"
+PROJECT_DESCRIPTION = "Secure surgical video and image annotation workspace for the Open-H research team."
+PROJECT_SUBTITLE = PROJECT_NAME
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "CVAT REST API",
-    "DESCRIPTION": "REST API for Computer Vision Annotation Tool (CVAT)",
+    "TITLE": f"{PROJECT_NAME} API",
+    "DESCRIPTION": f"REST API for the {PROJECT_NAME}",
     # Statically set schema version. May also be an empty string. When used together with
     # view versioning, will become '0.0.0 (v2)' for 'v2' versioned requests.
     # Set VERSION to None if only the request version should be rendered.
@@ -642,7 +645,7 @@ SPECTACULAR_SETTINGS = {
     },
     "TOS": "https://www.google.com/policies/terms/",
     "EXTERNAL_DOCS": {
-        "description": "CVAT documentation",
+        "description": "Platform documentation",
         "url": CVAT_DOCS_URL,
     },
     # OTHER SETTINGS
@@ -767,9 +770,11 @@ CLOUD_DATA_DOWNLOADING_MAX_THREADS_NUMBER_PER_CPU = 4
 # Indicates the maximum number of days a file or directory is retained in the temporary directory
 TMP_FILE_OR_DIR_RETENTION_DAYS = 3
 
-LOGO_FILENAME = "logo.svg"
+LOGO_FILENAME = "open-h-logo.jpg"
 ABOUT_INFO = {
-    "subtitle": "Open Data Annotation Platform",
+    "name": PROJECT_NAME,
+    "subtitle": PROJECT_SUBTITLE,
+    "description": PROJECT_DESCRIPTION,
 }
 
 if ONE_RUNNING_JOB_IN_QUEUE_PER_USER:

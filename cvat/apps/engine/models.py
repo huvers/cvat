@@ -1186,6 +1186,7 @@ class SurgeryModelType(str, models.Choices):
     PHASE_CLASSIFIER = 'phase_classifier'
     TASK_CLASSIFIER = 'task_classifier'
     ANATOMY_SEGMENTER = 'anatomy_segmenter'
+    VIDEO_TRACKER = 'video_tracker'
 
 
 class SurgeryModel(TimestampedModel):

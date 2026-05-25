@@ -968,6 +968,16 @@ class UserPartialUpdateAPITestCase(UserAPITestCase):
         response = self._run_api_v2_users_id(self.user, self.user.id, data)
         self._check_response_with_data(self.user, response, data, True)
 
+        data = {
+            "role": "surgeon",
+            "expertise_level": "attending",
+            "specialty": "General Surgery",
+            "institution": "Open-H",
+        }
+        response = self._run_api_v2_users_id(self.user, self.user.id, data)
+        self._check_response_with_data(self.user, response, data, True)
+        self.assertTrue(response.data["profile_complete"])
+
         data = {"email": "unverified@example.com"}
         response = self._run_api_v2_users_id(self.user, self.user.id, data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

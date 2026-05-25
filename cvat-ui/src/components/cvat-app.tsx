@@ -81,6 +81,7 @@ import '../styles.scss';
 import appConfig from 'config';
 import EventRecorder from 'utils/event-recorder';
 import { authQuery } from 'utils/auth-query';
+import { PLATFORM_NAME } from 'branding';
 import CVATMarkdown from './common/cvat-markdown';
 import EmailConfirmationPage from './email-confirmation-pages/email-confirmed';
 import EmailVerificationSentPage from './email-confirmation-pages/email-verification-sent';
@@ -259,7 +260,7 @@ class CVATApplication extends React.PureComponent<CVATAppProps & RouteComponentP
                             <Col>
                                 <Text>
                                     {`The browser you are using is ${name} ${version} based on ${engine}.` +
-                                        ' CVAT was tested in the latest versions of Chrome and Firefox.' +
+                                        ` ${PLATFORM_NAME} was tested in the latest versions of Chrome and Firefox.` +
                                         ' We recommend to use Chrome (or another Chromium based browser)'}
                                 </Text>
                             </Col>
@@ -280,7 +281,7 @@ class CVATApplication extends React.PureComponent<CVATAppProps & RouteComponentP
                 className: 'cvat-modal-unsupported-features-warning',
                 content: (
                     <Text>
-                        {`${name} v${version} does not support API, which is used by CVAT. `}
+                        {`${name} v${version} does not support API, which is used by ${PLATFORM_NAME}. `}
                         It is strongly recommended to update your browser.
                     </Text>
                 ),

@@ -5,11 +5,16 @@
 services:
   cvat_server:
     labels:
+      traefik.http.routers.cvat.rule:
+        Host(`${CVAT_HOST:-localhost}`) &&
+        (PathPrefix(`/api/`) || PathPrefix(`/static/`) || PathPrefix(`/admin`)
+          || PathPrefix(`/django-rq`))
       traefik.http.routers.cvat.entrypoints: websecure
       traefik.http.routers.cvat.tls.certresolver: lets-encrypt
 
   cvat_ui:
     labels:
+      traefik.http.routers.cvat-ui.rule: Host(`${CVAT_HOST:-localhost}`)
       traefik.http.routers.cvat-ui.entrypoints: websecure
       traefik.http.routers.cvat-ui.tls.certresolver: lets-encrypt
 

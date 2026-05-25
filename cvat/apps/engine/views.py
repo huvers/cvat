@@ -24,7 +24,7 @@ from django.contrib.auth.models import User
 from django.core.files.storage import storages
 from django.db import IntegrityError, transaction
 from django.db.models.query import Prefetch
-from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
@@ -104,6 +104,21 @@ from cvat.apps.engine.permissions import (
     get_iam_context,
 )
 from cvat.apps.engine.rq import ImportRequestId, ImportRQMeta, RQMetaWithFailureInfo
+from cvat.apps.engine.sam3 import (
+    SAM3ProxyError,
+    add_job_sam3_video_prompt,
+    create_job_sam3_session,
+    create_job_sam3_video_session,
+    delete_job_sam3_session,
+    delete_job_sam3_video_session,
+    get_job_sam3_models,
+    infer_job_sam3_box,
+    infer_job_sam3_points,
+    infer_job_sam3_text,
+    propagate_job_sam3_video,
+    remove_job_sam3_video_object,
+    sync_job_sam3_labels,
+)
 from cvat.apps.engine.serializers import (
     AboutSerializer,
     AnnotationFileSerializer,
@@ -187,7 +202,7 @@ class ServerViewSet(viewsets.ViewSet):
         pass
 
     @staticmethod
-    @extend_schema(summary='Get basic CVAT information',
+    @extend_schema(summary='Get basic platform information',
         responses={
             '200': AboutSerializer,
         })
@@ -197,15 +212,9 @@ class ServerViewSet(viewsets.ViewSet):
     def about(request: ExtendedRequest):
         from cvat import __version__ as cvat_version
         about = {
-            "name": "Computer Vision Annotation Tool",
+            "name": settings.ABOUT_INFO["name"],
             "subtitle": settings.ABOUT_INFO["subtitle"],
-            "description": "CVAT is completely re-designed and re-implemented " +
-                "version of Video Annotation Tool from Irvine, California " +
-                "tool. It is free, online, interactive video and image annotation " +
-                "tool for computer vision. It is being used by our team to " +
-                "annotate million of objects with different properties. Many UI " +
-                "and UX decisions are based on feedbacks from professional data " +
-                "annotation team.",
+            "description": settings.ABOUT_INFO["description"],
             "version": cvat_version,
             "logo_url": request.build_absolute_uri(storages["staticfiles"].url(settings.LOGO_FILENAME)),
         }
@@ -2200,6 +2209,407 @@ class JobViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateMo
             "transcripts": transcripts,
         }
         return Response(payload)
+
+    @extend_schema(methods=["GET"], summary="List SAM3 anatomy variants for a job", responses={"200": None})
+    @action(detail=True, methods=["GET"], url_path=r"sam3/models/?$", serializer_class=None)
+    def sam3_models(self, request: ExtendedRequest, pk: int):
+        self._object: models.Job = self.get_object()
+        return Response(get_job_sam3_models(self._object))
+
+    @extend_schema(
+        methods=["POST"],
+        summary="Create missing anatomy labels for a SAM3 model on the current job",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "model_id": {"type": "integer"},
+                },
+                "required": ["model_id"],
+            }
+        },
+        responses={"200": None},
+    )
+    @action(detail=True, methods=["POST"], url_path=r"sam3/labels/sync/?$", serializer_class=None)
+    def sam3_labels_sync(self, request: ExtendedRequest, pk: int):
+        self._object: models.Job = self.get_object()
+        if request.data.get("model_id") is None:
+            raise ValidationError("Field 'model_id' is required")
+
+        response = sync_job_sam3_labels(
+            self._object,
+            model_id=int(request.data["model_id"]),
+        )
+        return Response(response)
+
+    @extend_schema(
+        methods=["POST"],
+        summary="Create a SAM3 frame session for a job",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "model_id": {"type": "integer"},
+                    "frame": {"type": "integer"},
+                    "confidence_threshold": {"type": "number"},
+                },
+                "required": ["model_id", "frame"],
+            }
+        },
+        responses={"201": None},
+    )
+    @action(detail=True, methods=["POST"], url_path=r"sam3/sessions/?$", serializer_class=None)
+    def sam3_sessions(self, request: ExtendedRequest, pk: int):
+        self._object: models.Job = self.get_object()
+
+        if request.data.get("model_id") is None:
+            raise ValidationError("Field 'model_id' is required")
+        if request.data.get("frame") is None:
+            raise ValidationError("Field 'frame' is required")
+
+        try:
+            response = create_job_sam3_session(
+                self._object,
+                model_id=int(request.data["model_id"]),
+                frame=int(request.data["frame"]),
+                confidence_threshold=request.data.get("confidence_threshold"),
+            )
+        except SAM3ProxyError as exc:
+            raise exc
+
+        return Response(response, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        methods=["DELETE"],
+        summary="Delete a SAM3 frame session for a job",
+        parameters=[
+            OpenApiParameter("model_id", location=OpenApiParameter.QUERY, type=OpenApiTypes.INT, required=True),
+        ],
+        responses={"200": None},
+    )
+    @action(
+        detail=True,
+        methods=["DELETE"],
+        url_path=r"sam3/sessions/(?P<session_id>(?!video$)[^/.]+)",
+        serializer_class=None,
+    )
+    def sam3_session_detail(self, request: ExtendedRequest, pk: int, session_id: str):
+        self._object: models.Job = self.get_object()
+        model_id = request.query_params.get("model_id")
+        if model_id is None:
+            raise ValidationError("Query parameter 'model_id' is required")
+
+        response = delete_job_sam3_session(
+            self._object,
+            model_id=int(model_id),
+            session_id=session_id,
+        )
+        return Response(response)
+
+    @extend_schema(
+        methods=["POST"],
+        summary="Run SAM3 text prelabel inference for a job frame session",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "model_id": {"type": "integer"},
+                    "session_id": {"type": "string"},
+                    "labels": {"type": "array", "items": {"type": "string"}},
+                    "score_threshold": {"type": "number"},
+                },
+                "required": ["model_id", "session_id", "labels"],
+            }
+        },
+        responses={"200": None},
+    )
+    @action(detail=True, methods=["POST"], url_path=r"sam3/infer/text/?$", serializer_class=None)
+    def sam3_infer_text(self, request: ExtendedRequest, pk: int):
+        self._object: models.Job = self.get_object()
+        for field in ("model_id", "session_id", "labels"):
+            if request.data.get(field) is None:
+                raise ValidationError(f"Field '{field}' is required")
+
+        response = infer_job_sam3_text(
+            self._object,
+            model_id=int(request.data["model_id"]),
+            session_id=str(request.data["session_id"]),
+            labels=list(request.data["labels"]),
+            score_threshold=request.data.get("score_threshold"),
+        )
+        return Response(response)
+
+    @extend_schema(
+        methods=["POST"],
+        summary="Run SAM3 box inference for a job frame session",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "model_id": {"type": "integer"},
+                    "session_id": {"type": "string"},
+                    "label_name": {"type": "string"},
+                    "prompt": {"type": "string"},
+                    "bbox": {"type": "array", "items": {"type": "number"}},
+                    "negative": {"type": "boolean"},
+                    "score_threshold": {"type": "number"},
+                },
+                "required": ["model_id", "session_id", "label_name", "bbox"],
+            }
+        },
+        responses={"200": None},
+    )
+    @action(detail=True, methods=["POST"], url_path=r"sam3/infer/box/?$", serializer_class=None)
+    def sam3_infer_box(self, request: ExtendedRequest, pk: int):
+        self._object: models.Job = self.get_object()
+        for field in ("model_id", "session_id", "label_name", "bbox"):
+            if request.data.get(field) is None:
+                raise ValidationError(f"Field '{field}' is required")
+
+        response = infer_job_sam3_box(
+            self._object,
+            model_id=int(request.data["model_id"]),
+            session_id=str(request.data["session_id"]),
+            label_name=str(request.data["label_name"]),
+            bbox=list(request.data["bbox"]),
+            negative=bool(request.data.get("negative", False)),
+            prompt=request.data.get("prompt"),
+            score_threshold=request.data.get("score_threshold"),
+        )
+        return Response(response)
+
+    @extend_schema(
+        methods=["POST"],
+        summary="Run SAM3 point inference for a job frame session",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "model_id": {"type": "integer"},
+                    "session_id": {"type": "string"},
+                    "label_name": {"type": "string"},
+                    "prompt": {"type": "string"},
+                    "points": {"type": "array", "items": {"type": "object"}},
+                    "logits_token": {"type": "string", "nullable": True},
+                    "initial_mask_rle": {"type": "array", "items": {"type": "number"}, "nullable": True},
+                    "multimask_output": {"type": "boolean"},
+                    "score_threshold": {"type": "number"},
+                },
+                "required": ["model_id", "session_id", "points"],
+            }
+        },
+        responses={"200": None},
+    )
+    @action(detail=True, methods=["POST"], url_path=r"sam3/infer/points/?$", serializer_class=None)
+    def sam3_infer_points(self, request: ExtendedRequest, pk: int):
+        self._object: models.Job = self.get_object()
+        for field in ("model_id", "session_id", "points"):
+            if request.data.get(field) is None:
+                raise ValidationError(f"Field '{field}' is required")
+
+        response = infer_job_sam3_points(
+            self._object,
+            model_id=int(request.data["model_id"]),
+            session_id=str(request.data["session_id"]),
+            points=list(request.data["points"]),
+            logits_token=request.data.get("logits_token"),
+            initial_mask_rle=request.data.get("initial_mask_rle"),
+            multimask_output=bool(request.data.get("multimask_output", True)),
+            label_name=request.data.get("label_name"),
+            prompt=request.data.get("prompt"),
+            score_threshold=request.data.get("score_threshold"),
+        )
+        return Response(response)
+
+    # ── SAM3.1 video tracking endpoints ─────────────────────────────
+
+    @extend_schema(
+        methods=["POST"],
+        summary="Create a SAM3.1 video tracking session from a frame range",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "model_id": {"type": "integer"},
+                    "start_frame": {"type": "integer"},
+                    "stop_frame": {"type": "integer"},
+                    "step": {"type": "integer"},
+                },
+                "required": ["model_id", "start_frame", "stop_frame"],
+            }
+        },
+        responses={"201": None},
+    )
+    @action(detail=True, methods=["POST"], url_path=r"sam3/sessions/video/?$", serializer_class=None)
+    def sam3_video_sessions(self, request: ExtendedRequest, pk: int):
+        self._object: models.Job = self.get_object()
+        for field in ("model_id", "start_frame", "stop_frame"):
+            if request.data.get(field) is None:
+                raise ValidationError(f"Field '{field}' is required")
+
+        response = create_job_sam3_video_session(
+            self._object,
+            model_id=int(request.data["model_id"]),
+            start_frame=int(request.data["start_frame"]),
+            stop_frame=int(request.data["stop_frame"]),
+            step=int(request.data.get("step", 1)),
+        )
+        return Response(response, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        methods=["DELETE"],
+        summary="Delete a SAM3.1 video tracking session",
+        parameters=[
+            OpenApiParameter("model_id", location=OpenApiParameter.QUERY, type=OpenApiTypes.INT, required=True),
+        ],
+        responses={"200": None},
+    )
+    @action(
+        detail=True,
+        methods=["DELETE"],
+        url_path=r"sam3/sessions/video/(?P<session_id>[^/.]+)",
+        serializer_class=None,
+    )
+    def sam3_video_session_detail(self, request: ExtendedRequest, pk: int, session_id: str):
+        self._object: models.Job = self.get_object()
+        model_id = request.query_params.get("model_id")
+        if model_id is None:
+            raise ValidationError("Query parameter 'model_id' is required")
+
+        response = delete_job_sam3_video_session(
+            self._object,
+            model_id=int(model_id),
+            session_id=session_id,
+        )
+        return Response(response)
+
+    @extend_schema(
+        methods=["POST"],
+        summary="Add a prompt to a SAM3.1 video session frame",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "model_id": {"type": "integer"},
+                    "session_id": {"type": "string"},
+                    "frame": {"type": "integer"},
+                    "text": {"type": "string"},
+                    "points": {"type": "array"},
+                    "point_labels": {"type": "array", "items": {"type": "integer"}},
+                    "bounding_boxes": {"type": "array"},
+                    "bounding_box_labels": {"type": "array", "items": {"type": "integer"}},
+                    "obj_id": {"type": "integer"},
+                    "output_prob_thresh": {"type": "number"},
+                },
+                "required": ["model_id", "session_id", "frame"],
+            }
+        },
+        responses={"200": None},
+    )
+    @action(detail=True, methods=["POST"], url_path=r"sam3/video/prompt/?$", serializer_class=None)
+    def sam3_video_prompt(self, request: ExtendedRequest, pk: int):
+        self._object: models.Job = self.get_object()
+        for field in ("model_id", "session_id", "frame"):
+            if request.data.get(field) is None:
+                raise ValidationError(f"Field '{field}' is required")
+
+        response = add_job_sam3_video_prompt(
+            self._object,
+            model_id=int(request.data["model_id"]),
+            session_id=str(request.data["session_id"]),
+            frame=int(request.data["frame"]),
+            text=request.data.get("text"),
+            points=request.data.get("points"),
+            point_labels=request.data.get("point_labels"),
+            bounding_boxes=request.data.get("bounding_boxes"),
+            bounding_box_labels=request.data.get("bounding_box_labels"),
+            obj_id=request.data.get("obj_id"),
+            output_prob_thresh=float(request.data.get("output_prob_thresh", 0.5)),
+        )
+        return Response(response)
+
+    @extend_schema(
+        methods=["POST"],
+        summary="Propagate SAM3.1 video tracking across frames (streaming NDJSON)",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "model_id": {"type": "integer"},
+                    "session_id": {"type": "string"},
+                    "direction": {"type": "string", "enum": ["forward", "backward", "both"]},
+                    "start_frame": {"type": "integer"},
+                    "max_frames": {"type": "integer"},
+                    "output_prob_thresh": {"type": "number"},
+                },
+                "required": ["model_id", "session_id"],
+            }
+        },
+        responses={"200": None},
+    )
+    @action(detail=True, methods=["POST"], url_path=r"sam3/video/propagate/?$", serializer_class=None)
+    def sam3_video_propagate(self, request: ExtendedRequest, pk: int):
+        self._object: models.Job = self.get_object()
+        for field in ("model_id", "session_id"):
+            if request.data.get(field) is None:
+                raise ValidationError(f"Field '{field}' is required")
+
+        import json
+        stream = propagate_job_sam3_video(
+            self._object,
+            model_id=int(request.data["model_id"]),
+            session_id=str(request.data["session_id"]),
+            direction=str(request.data.get("direction", "both")),
+            start_frame=request.data.get("start_frame"),
+            max_frames=request.data.get("max_frames"),
+            output_prob_thresh=float(request.data.get("output_prob_thresh", 0.5)),
+        )
+
+        try:
+            first_chunk = next(stream)
+        except StopIteration:
+            first_chunk = None
+
+        def generate():
+            if first_chunk is not None:
+                yield json.dumps(first_chunk) + "\n"
+            for chunk in stream:
+                yield json.dumps(chunk) + "\n"
+
+        return StreamingHttpResponse(generate(), content_type="application/x-ndjson")
+
+    @extend_schema(
+        methods=["POST"],
+        summary="Remove an object from SAM3.1 video tracking",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "model_id": {"type": "integer"},
+                    "session_id": {"type": "string"},
+                    "obj_id": {"type": "integer"},
+                    "frame": {"type": "integer"},
+                },
+                "required": ["model_id", "session_id", "obj_id"],
+            }
+        },
+        responses={"200": None},
+    )
+    @action(detail=True, methods=["POST"], url_path=r"sam3/video/remove-object/?$", serializer_class=None)
+    def sam3_video_remove_object(self, request: ExtendedRequest, pk: int):
+        self._object: models.Job = self.get_object()
+        for field in ("model_id", "session_id", "obj_id"):
+            if request.data.get(field) is None:
+                raise ValidationError(f"Field '{field}' is required")
+
+        response = remove_job_sam3_video_object(
+            self._object,
+            model_id=int(request.data["model_id"]),
+            session_id=str(request.data["session_id"]),
+            obj_id=int(request.data["obj_id"]),
+            frame=int(request.data.get("frame", 0)),
+        )
+        return Response(response)
 
     @extend_schema(methods=['GET'], summary='Get surgery QA metrics for a job',
         responses={'200': None})
